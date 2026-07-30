@@ -1,0 +1,23 @@
+{
+	"name": "openrct2-typescript-plugin",
+	"version": "1.0.0",
+	"type": "module",
+	"license": "MIT",
+	"scripts": {
+		"start": "nodemon --watch ./src --ext js,ts --exec \"npm run build:dev\"",
+		"build": "rollup --config rollup.config.js --environment BUILD:production",
+		"build:dev": "rollup --config rollup.config.js"
+	},
+	"devDependencies": {
+		"@openrct2/types": "^0.5.0",
+		"@rollup/plugin-node-resolve": "^16.0.3",
+		"@rollup/plugin-terser": "^1.0.0",
+		"@rollup/plugin-typescript": "^12.3.0",
+		"nodemon": "^3.1.14",
+		"rollup": "^4.60.2",
+		"tslib": "^2.5.0"
+	},
+	"dependencies": {
+		"openrct2-flexui": "^0.1.0-prerelease.22"
+	}
+}
