@@ -7,7 +7,7 @@ import { Effect } from "../../fireworks/structures/Effect";
 export function openCometEffectWindow(effect: CometEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
 	const extraLongevity = store(effect?.extraLongevity ?? 0);
-	const timeTillStall = store(effect?.timeTillStall ?? 0);
+	const timeTillStall = store(effect?.timeTillStall ?? 45);
 	const trailDensity = store(effect?.trailDensity ?? 0.5);
 	const trailWidth = store(effect?.trailWidth ?? 3);
 	const tilt = store(effect?.tilt ?? 0);

@@ -6,9 +6,9 @@ import { Effect } from "../../fireworks/structures/Effect";
 
 export function openSphereEffectWindow(effect: SphereEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
-	const size = store(Math.min(100, Math.max(1, effect?.size ?? 20)));
-	const physicalSize = store(Math.min(6, Math.max(1, effect?.physicalSize ?? 3)));
-	const extraLongevity = store(Math.min(100, Math.max(0, effect?.extraLongevity ?? 0)));
+	const size = store(effect?.size ?? 40);
+	const physicalSize = store(effect?.physicalSize ?? 2.5);
+	const extraLongevity = store(effect?.extraLongevity ?? 20);
 	const colours = createLoadColoursEditor(effect?.colours, ["colour1", "colour2", "colour1A", "colour2A", "colour1B", "colour2B", "colour1C", "colour2C", "baseColour", "colour3", "colour4", "colour5", "colour6"]);
 	const patternOptions = ["one-pair", "2-halves", "2-mixed", "3-mixed", "random", "blinking-uniform-1zone", "blinking-uniform-2zones", "blinking-uniform-4zones", "blinking-uniform-6zones", "colour-sequence-layered"];
 	const sizePresets = [

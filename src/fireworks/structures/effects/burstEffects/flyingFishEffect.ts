@@ -53,7 +53,7 @@ export class FlyingFishEffect extends BurstEffect {
 					}
 					break;
 					case "colour-sequence":
-					colour = this.colours.colourList[Math.round(this.colours.colourList.length / this.size * i)];
+					colour = this.colours.colourList[Math.min(Math.round(this.colours.colourList.length / this.size * i), this.colours.colourList.length - 1)];
 					break;				
 			}
 			const angle1 = Math.random() * Math.PI * 2;

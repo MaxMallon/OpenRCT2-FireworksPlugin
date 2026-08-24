@@ -77,23 +77,16 @@ function getTileHeightAt(worldX: number, worldY: number): number | undefined
 
 function onTestGroundEffectButtonClick(): void
 {
-	if (editedEffects.get().length === 0)
-	{
-		if (typeof ui !== "undefined" && typeof ui.showError === "function")
-		{
-			ui.showError("Invalid ground effect", "A ground effect must have at least one effect before it can be tested.");
-		}
-		return;
-	}
+	if (!validateGroundEffectEditor()) return;
 
-	// Validate launch site reference
+	// Validate all named references before testing
 	const currentEdit = getGroundEffectToEdit();
 	if (currentEdit) {
 		const ctx = buildValidationContext();
 		const issues: ValidationIssue[] = [];
 		if (!currentEdit.isValid(ctx, issues, `Ground effect "${currentEdit.name}"`)) {
 			if (typeof ui !== "undefined" && typeof ui.showError === "function") {
-				ui.showError("Cannot test \u2013 validation failed", formatValidationIssues(issues));
+				ui.showError("Invalid ground effect", formatValidationIssues(issues));
 			}
 			return;
 		}
@@ -109,12 +102,6 @@ function onTestGroundEffectButtonClick(): void
 
 	if (!testPos)
 	{
-		if (typeof ui === "undefined" || !ui.mainViewport)
-		{
-			console.log("Warning: Unable to test ground effect because the main viewport is unavailable.");
-			return;
-		}
-
 		const viewport = ui.mainViewport as {
 			getCentrePosition?: () => CoordsXY;
 			getCenterPosition?: () => CoordsXY;
@@ -188,15 +175,23 @@ function syncEditorToEdit(): void
 	setGroundEffectToEdit(new GroundEffect(editedEffects.get().map(cloneEffect), editedName.get().trim(), selectedLaunchSiteName.get().trim()));
 }
 
-function showEmptyEffectWarning(): void
+function validateGroundEffectEditor(): boolean
 {
-	if (typeof ui !== "undefined" && typeof ui.showError === "function")
+	if (editedEffects.get().length === 0)
 	{
-		ui.showError("Invalid ground effect", "A ground effect must have at least one effect before it can be saved.");
-		return;
+		if (typeof ui !== "undefined" && typeof ui.showError === "function")
+			ui.showError("Invalid ground effect", "A ground effect must have at least one effect.");
+		return false;
 	}
 
-	console.log("Warning: Tried to save a ground effect with zero effects.");
+	if (!selectedLaunchSiteName.get().trim())
+	{
+		if (typeof ui !== "undefined" && typeof ui.showError === "function")
+			ui.showError("Invalid ground effect", "A ground effect must have a selected launch site.");
+		return false;
+	}
+
+	return true;
 }
 
 function resetEditor(): void
@@ -229,20 +224,7 @@ function loadSelectedGroundEffect(index: number): void
 
 function addOrUpdateGroundEffect(): void
 {
-	if (editedEffects.get().length === 0)
-	{
-		showEmptyEffectWarning();
-		return;
-	}
-
-	if (!selectedLaunchSiteName.get().trim())
-	{
-		if (typeof ui !== "undefined" && typeof ui.showError === "function")
-		{
-			ui.showError("Invalid ground effect", "A ground effect must have a selected launch site.");
-		}
-		return;
-	}
+	if (!validateGroundEffectEditor()) return;
 
 	const trimmedName = editedName.get().trim();
 	const nextName = trimmedName || getFallbackName();
@@ -524,8 +506,7 @@ export function createGroundEffectsTab()
 												content: [
 													button({
 														text: compute(isEffectDeleteMode, enabled => enabled ? "Delete Mode: {RED}ON" : "Delete Mode: OFF"),
-														width: 115,
-														onClick: onDeleteEffectClick
+														width: 115,													isPressed: isEffectDeleteMode,														onClick: onDeleteEffectClick
 													}),
 													label({ text: "", width: "1w" }),
 													button({

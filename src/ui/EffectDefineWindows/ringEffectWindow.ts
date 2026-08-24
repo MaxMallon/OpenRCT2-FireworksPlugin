@@ -6,9 +6,9 @@ import { Effect } from "../../fireworks/structures/Effect";
 
 export function openRingEffectWindow(effect: RingEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
-	const size = store(Math.min(100, Math.max(1, effect?.size ?? 20)));
-	const physicalSize = store(Math.min(6, Math.max(1, effect?.physicalSize ?? 3)));
-	const extraLongevity = store(Math.min(100, Math.max(0, effect?.extraLongevity ?? 0)));
+	const size = store(effect?.size ?? 45);
+	const physicalSize = store(effect?.physicalSize ?? 3);
+	const extraLongevity = store(effect?.extraLongevity ?? 20);
 	const trail = store(effect?.trail ?? false);
 	const microburst = store(effect?.microburst ?? false);
 	const azimuth = store(effect?.azimuth ?? 0);

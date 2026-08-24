@@ -6,11 +6,11 @@ import { Effect } from "../../fireworks/structures/Effect";
 
 export function openCometFanEffectWindow(effect: CometFanEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
-	const numberComets = store(effect?.numberComets ?? 6);
+	const numberComets = store(effect?.numberComets ?? 5);
 	const fanAngle = store(effect?.fanAngle ?? 45);
 	const fanOrientation = store(effect?.fanOrientation ?? 0);
 	const extraLongevity = store(effect?.extraLongevity ?? 0);
-	const timeTillStall = store(effect?.timeTillStall ?? 0);
+	const timeTillStall = store(effect?.timeTillStall ?? 50);
 	const trailDensity = store(effect?.trailDensity ?? 0.5);
 	const trailWidth = store(effect?.trailWidth ?? 3);
 	const colours = createLoadColoursEditor(effect?.colours, ["head", "trail1", "trail2", "headA", "trail1A", "trail2A", "headB", "trail1B", "trail2B"]);

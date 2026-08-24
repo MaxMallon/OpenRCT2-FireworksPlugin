@@ -628,7 +628,7 @@ function openAddTriggerWindow(): void
                             if (warning)
                             {
                                 if (typeof ui !== "undefined" && typeof ui.showError === "function")
-                                    ui.showError("Trigger interval too short", warning);
+                                    ui.showError("Invalid trigger", warning);
                                 return;
                             }
                             currentTrigger.set(trigger);
@@ -865,7 +865,7 @@ export function createShowTab()
                                     {
                                         if (typeof ui !== "undefined" && typeof ui.showError === "function")
                                         {
-                                            ui.showError("Cannot start \u2013 validation failed", formatValidationIssues(issues));
+                                            ui.showError("Invalid show", formatValidationIssues(issues));
                                         }
                                         return;
                                     }
@@ -900,7 +900,7 @@ export function createShowTab()
                                     {
                                         if (typeof ui !== "undefined" && typeof ui.showError === "function")
                                         {
-                                            ui.showError("Cannot test \u2013 validation failed", formatValidationIssues(issues));
+                                            ui.showError("Invalid show", formatValidationIssues(issues));
                                         }
                                         return;
                                     }

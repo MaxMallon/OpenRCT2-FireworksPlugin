@@ -21,6 +21,12 @@ export function getMainWindowPosition(): { x: number; y: number } | undefined {
     return { x: native.x as number, y: native.y as number };
 }
 
+export function getMainWindowBounds(): { x: number; y: number; width: number; height: number } | undefined {
+    const native = mainWindowHandle?.D;
+    if (!native) return undefined;
+    return { x: native.x as number, y: native.y as number, width: native.width as number, height: native.height as number };
+}
+
 /**
  * Sets the colours of the main fireworks window by writing directly to the
  * internal native window reference exposed by openrct2-flexui (`.D`).

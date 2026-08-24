@@ -36,17 +36,17 @@ export class CometFanEffect extends BurstEffect {
 					break;
 				case "colour-sequence-trail":
 					{
-						let col = this.colours.colourList[Math.round(this.colours.colourList.length / this.numberComets * i)];
+						let col = this.colours.colourList[Math.min(Math.round(this.colours.colourList.length / this.numberComets * i), this.colours.colourList.length - 1)];
 						shotColours = new ShellColours(this.colours.getColour("head"), col, col);
 					} break;
 				case "colour-sequence-head":
 					{
-						let col = this.colours.colourList[Math.round(this.colours.colourList.length / this.numberComets * i)];
+						let col = this.colours.colourList[Math.min(Math.round(this.colours.colourList.length / this.numberComets * i), this.colours.colourList.length - 1)];
 						shotColours = new ShellColours(col, this.colours.getColour("trail1"), this.colours.getColour("trail2"));
 					} break;
 				case "colour-sequence":
 					{
-						let col = this.colours.colourList[Math.round(this.colours.colourList.length / this.numberComets * i)];
+						let col = this.colours.colourList[Math.min(Math.round(this.colours.colourList.length / this.numberComets * i), this.colours.colourList.length - 1)];
 						shotColours = new ShellColours(col, col, col);
 					} break;
 			}

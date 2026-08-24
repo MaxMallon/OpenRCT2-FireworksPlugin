@@ -32,11 +32,11 @@ function showError(title: string, message: string): void
 
 export function openBigBouqetEffectWindow(effect: BigBouqetEffect | undefined, onSave: (effect: Effect) => void, onClose?: () => void, isEditing: boolean = effect !== undefined): void
 {
-	const subSize = store(effect?.subSize ?? 20);
-	const subPhysicalSize = store(effect?.subPhysicalSize ?? 2);
-	const physicalSize = store(effect?.physicalSize ?? 3);
+	const subSize = store(effect?.subSize ?? 32);
+	const subPhysicalSize = store(effect?.subPhysicalSize ?? 1.8);
+	const physicalSize = store(effect?.physicalSize ?? 8);
 	const numberSubShots = store(effect?.numberSubShots ?? 30);
-	const extraLongevity = store(effect?.extraLongevity ?? 0);
+	const extraLongevity = store(effect?.extraLongevity ?? 10);
 	const sizePresets: BigBouqetSizePreset[] = [
 		{ label: "S", subSize: 	50, subPhysicalSize: 3, physicalSize: 3, numberSubShots: 3, extraLongevity: 50 },
 		{ label: "M", subSize: 40, subPhysicalSize: 2.2, physicalSize: 5, numberSubShots: 10, extraLongevity: 30 },

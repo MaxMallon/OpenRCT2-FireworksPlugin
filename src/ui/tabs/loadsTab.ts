@@ -11,7 +11,7 @@ import { Effect, EffectType } from "../../fireworks/structures/Effect";
 import { Load } from "../../fireworks/structures/Load";
 import { GetColouredEffectSprite, sprite } from "../../img/images";
 import { Colour } from "openrct2-flexui";
-import { GetFireworkTestLocation } from "../../fireworks/helpers";
+import { GetFireworkTestLocation, isEditorWindowObscuringCenter } from "../../fireworks/helpers";
 
 
 const selectedLoadIndex = store<number | undefined>(undefined);
@@ -62,10 +62,7 @@ const addEffectTypes: EffectType[] = [
 ];
 
 function onTestLoadsButtonClick() {
-	if (editedLoadEffects.get().length === 0) {
-		showEmptyLoadWarning();
-		return;
-	}
+	if (!validateLoadEditor()) return;
 
 	const loadToTest = getEditLoad();
 	if (!loadToTest) {
@@ -77,11 +74,14 @@ function onTestLoadsButtonClick() {
 	const issues: ValidationIssue[] = [];
 	if (!loadToTest.isValid(ctx, issues, `Load "${loadToTest.name}"`)) {
 		if (typeof ui !== "undefined" && typeof ui.showError === "function") {
-			ui.showError("Cannot test – validation failed", formatValidationIssues(issues));
+			ui.showError("Invalid load", formatValidationIssues(issues));
 		}
 		return;
 	}
 	ResetCounts();
+	if (isEditorWindowObscuringCenter()) {
+		ui.showError("Window Warning", "The editor window is roughly in the centre of the screen and may obscure the effect. Consider moving it to the side.");
+	}
 	Play(true);
 	let height = 8 * 100;
 	let pos = GetFireworkTestLocation(height);
@@ -96,13 +96,13 @@ function syncEditLoadFromEditor(): void {
 	setEditLoad(new Load(editedLoadEffects.get().map(cloneEffect), editedLoadName.get().trim()));
 }
 
-function showEmptyLoadWarning(): void {
-	if (typeof ui !== "undefined" && typeof ui.showError === "function") {
-		ui.showError("Invalid load", "A load must have at least one effect before it can be saved.");
-		return;
+function validateLoadEditor(): boolean {
+	if (editedLoadEffects.get().length === 0) {
+		if (typeof ui !== "undefined" && typeof ui.showError === "function")
+			ui.showError("Invalid load", "A load must have at least one effect.");
+		return false;
 	}
-
-	console.log("Warning: Tried to save a load with zero effects.");
+	return true;
 }
 
 function resetLoadEditor(): void {
@@ -129,10 +129,7 @@ function loadSelectedLoad(index: number): void {
 }
 
 function addOrUpdateLoad(): void {
-	if (editedLoadEffects.get().length === 0) {
-		showEmptyLoadWarning();
-		return;
-	}
+	if (!validateLoadEditor()) return;
 
 	const trimmedName = editedLoadName.get().trim();
 	const nextName = trimmedName || getFallbackLoadName();
@@ -367,8 +364,7 @@ export function createLoadsTab() {
 												content: [
 													button({
 														text: compute(isEffectDeleteMode, enabled => enabled ? "Delete Mode: {RED}ON" : "Delete Mode: OFF"),
-														width: 115,
-														onClick: onDeleteEffectClick
+														width: 115,													isPressed: isEffectDeleteMode,														onClick: onDeleteEffectClick
 													}),
 													label({ text: "", width: "1w" }),
 													button({

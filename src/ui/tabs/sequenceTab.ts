@@ -2,7 +2,7 @@
 
 // ---- Module-level state ----
 
-import { store, compute, OpenWindow, window, LayoutDirection, label, textbox, listview, button, flexible, dropdown, groupbox, box, checkbox } from "openrct2-flexui";
+import { store, compute, OpenWindow, window, LayoutDirection, label, textbox, listview, button, flexible, dropdown, groupbox, box, checkbox, Colour } from "openrct2-flexui";
 import { LoadFireworks, Play, Stop, flattenScheduledEntryToShots } from "../../fireworks/fireworksEffectsPlayer";
 import { ResetCounts } from "../../fireworks/particleSpawner";
 import { getEditSequence, setEditSequence, resolveSequence, getSequenceList, setSequenceList, getShellList, getGroundEffectList, effectTick, definedSequences } from "../../fireworks/persistent";
@@ -184,7 +184,7 @@ function showError(title: string, message: string): void {
 
 function insertWithLock(insertIndex: number, delay: number): void {
     if (!entryEditItemName || !entryEditItemType) {
-        showError("No item selected", "Select a shell, ground effect, or sequence before adding.");
+        showError("Invalid entry", "Select a shell, ground effect, or sequence before adding.");
         return;
     }
     const seq = getEditSequence()!;
@@ -255,7 +255,7 @@ function insertWithLock(insertIndex: number, delay: number): void {
 
 function onAddAt(): void {
     if (!entryEditItemName || !entryEditItemType) {
-        showError("No item selected", "Select a shell, ground effect, or sequence before adding.");
+        showError("Invalid entry", "Select a shell, ground effect, or sequence before adding.");
         return;
     }
     const timeStr = entryEditTimeText.get().trim();
@@ -294,7 +294,7 @@ function onAddAt(): void {
 
 function onAddAfterIndex(): void {
     if (!entryEditItemName || !entryEditItemType) {
-        showError("No item selected", "Select a shell, ground effect, or sequence before adding.");
+        showError("Invalid entry", "Select a shell, ground effect, or sequence before adding.");
         return;
     }
     const delayStr = entryEditDelayText.get().trim();
@@ -354,7 +354,16 @@ function onDeleteEntryClick(row: number): void {
 
 // ---- Sequence CRUD ----
 
+function validateSequenceEditor(): boolean {
+    if (getEditSequence()!.items.length === 0) {
+        showError("Invalid sequence", "A sequence must have at least one item.");
+        return false;
+    }
+    return true;
+}
+
 function addOrUpdateSequence(): void {
+    if (!validateSequenceEditor()) return;
     const seq = getEditSequence()!;
     const trimmedName = editedSequenceName.get().trim();
     const nextName = trimmedName || `Sequence ${definedSequences.get().length + 1}`;
@@ -411,23 +420,74 @@ function deleteSelectedSequence(): void {
         return;
     }
 
-    doDelete();
+    openConfirmDeleteWindow(`Sequence "${seq.name}"`, doDelete);
+}
+
+function openConfirmDeleteWindow(itemLabel: string, onConfirm: () => void): void {
+    if (typeof ui === "undefined") {
+        onConfirm();
+        return;
+    }
+
+    let handle: OpenWindow | undefined;
+
+    const mainPos = getMainWindowPosition();
+    const position = mainPos
+        ? { x: mainPos.x + 40, y: mainPos.y + 40 }
+        : "center" as const;
+
+    const popup = window({
+        title: "Delete Sequence",
+        width: 300,
+        height: 90,
+        padding: 8,
+        position,
+        colours: [Colour.BordeauxRedDark, Colour.Grey],
+        direction: LayoutDirection.Vertical,
+        content: [
+            flexible({
+                direction: LayoutDirection.Vertical,
+                content: [
+                    label({ text: `{WHITE}Are you sure you want to delete\n${itemLabel}?`, height: 30 }),
+                    flexible({
+                        direction: LayoutDirection.Horizontal,
+                        content: [
+                            button({
+                                text: "Yes",
+                                width: 80,
+                                height: 22,
+                                onClick: () => {
+                                    handle?.close();
+                                    onConfirm();
+                                }
+                            }),
+                            button({
+                                text: "Cancel",
+                                width: 80,
+                                height: 22,
+                                onClick: () => handle?.close()
+                            })
+                        ]
+                    })
+                ]
+            }),
+            
+        ]
+    });
+    handle = popup.open();
 }
 
 // ---- Test sequence ----
 
 function onPlaySequenceClick(): void {
+    if (!validateSequenceEditor()) return;
     const seq = getEditSequence()!;
-    if (seq.items.length === 0) {
-        showError("Empty sequence", "The sequence has no items to test.");
-        return;
-    }
 
     // Validate all named references before playing
     const ctx = buildValidationContext();
     const issues: ValidationIssue[] = [];
     if (!seq.isValid(ctx, issues, `Sequence "${seq.name}"`)) {
-        showError("Cannot play \u2013 validation failed", formatValidationIssues(issues));
+        showError("Invalid sequence", formatValidationIssues(issues));
         return;
     }
 
@@ -466,7 +526,7 @@ function onPlaySequenceClick(): void {
 function onPlayFromIndexClick(): void {
     const startRow = selectedEntryIndex.get();
     if (startRow === undefined) {
-        showError("No row selected", "Select a row in the sequence list to play from.");
+        showError("Invalid selection", "Select a row in the sequence list to play from.");
         return;
     }
     const seq = getEditSequence()!;
@@ -479,7 +539,7 @@ function onPlayFromIndexClick(): void {
     const ctx = buildValidationContext();
     const issues: ValidationIssue[] = [];
     if (!seq.isValid(ctx, issues, `Sequence "${seq.name}"`)) {
-        showError("Cannot play \u2013 validation failed", formatValidationIssues(issues));
+        showError("Invalid sequence", formatValidationIssues(issues));
         return;
     }
 
@@ -1012,12 +1072,14 @@ export function createSequenceTab() {
                                                     button({
                                                         text: compute(isDeleteMode, textColour, (d, c) => d ? `${c}Delete Mode: {RED}ON` : `${c}Delete Mode: OFF`),
                                                         width: 115,
+                                                        isPressed: isDeleteMode,
                                                         disabled: isPlaying,
                                                         onClick: () => isDeleteMode.set(!isDeleteMode.get())
                                                     }),
                                                     button({
                                                         text: compute(isExpandedView, textColour, (expanded, c) => `${c}${expanded ? "{RED}Compact Sub-Sequences" : "Expand Sub-Sequences"}`),
                                                         width: 140,
+                                                        isPressed: isExpandedView,
                                                         disabled: isPlaying,
                                                         onClick: () => {
                                                             isExpandedView.set(!isExpandedView.get());

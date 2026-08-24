@@ -41,13 +41,13 @@ const headColour = store<Colour>(Colour.BrightYellow);
 const trail1Colour = store<Colour>(Colour.DarkOrange);
 const trail2Colour = store<Colour>(Colour.DarkOrange);
 const isBigHead = store(false);
-const trail = store(false);
+const trail = store(true);
 const trailDensity = store(0.5);
 const trailWidth = store(3);
 const azimuth = store(0);
 const tilt = store(0);
-const timeTillStall = store(70);
-const delay = store(70);
+const timeTillStall = store(75);
+const delay = store(75);
 const syncHeightAndDelay = store(true);
 const ascendEffectsStore = store<ShellLoad[]>([]);
 const ascendEffectsRevision = store(0);
@@ -231,38 +231,20 @@ function loadSelectedShell(index: number): void
     setShellToEdit(cloneShell(shell));
 }
 
-function addOrUpdateShell(): void
+function validateShellEditor(): boolean
 {
-    const trimmedName = editedShellName.get().trim();
-    const nextName = trimmedName || getFallbackShellName();
-    const loadName = selectedLoadName.get().trim();
-
-    if (!loadName)
+    if (!selectedLoadName.get().trim())
     {
         if (typeof ui !== "undefined" && typeof ui.showError === "function")
-        {
             ui.showError("Invalid shell", "A shell must have a selected load.");
-        }
-        return;
+        return false;
     }
 
-    const launchSiteName = selectedLaunchSiteName.get().trim();
-    if (!launchSiteName)
+    if (!selectedLaunchSiteName.get().trim())
     {
         if (typeof ui !== "undefined" && typeof ui.showError === "function")
-        {
             ui.showError("Invalid shell", "A shell must have a selected launch site.");
-        }
-        return;
-    }
-
-    if (!persistent.resolveLoad(loadName))
-    {
-        if (typeof ui !== "undefined" && typeof ui.showError === "function")
-        {
-            ui.showError("Invalid shell", "Selected load no longer exists.");
-        }
-        return;
+        return false;
     }
 
     const currentDelay = delay.get();
@@ -270,8 +252,26 @@ function addOrUpdateShell(): void
     if (invalidAscendEffect)
     {
         if (typeof ui !== "undefined" && typeof ui.showError === "function")
-        {
             ui.showError("Invalid shell", `Ascend load "${invalidAscendEffect.loadName}" fires at delay ${invalidAscendEffect.timeTillExplode}, which exceeds the shell delay of ${currentDelay}.`);
+        return false;
+    }
+
+    return true;
+}
+
+function addOrUpdateShell(): void
+{
+    if (!validateShellEditor()) return;
+
+    const trimmedName = editedShellName.get().trim();
+    const nextName = trimmedName || getFallbackShellName();
+    const loadName = selectedLoadName.get().trim();
+
+    if (!persistent.resolveLoad(loadName))
+    {
+        if (typeof ui !== "undefined" && typeof ui.showError === "function")
+        {
+            ui.showError("Invalid shell", "Selected load no longer exists.");
         }
         return;
     }
@@ -358,25 +358,7 @@ function onTestShellsButtonClick(): void
     {
         return;
     }
-
-    if (!shell.load?.loadName)
-    {
-        if (typeof ui !== "undefined" && typeof ui.showError === "function")
-        {
-            ui.showError("Invalid shell", "Select a valid load before testing the shell.");
-        }
-        return;
-    }
-
-    const invalidAscendEffect = shell.ascendEffects.find((e: ShellLoad) => e.timeTillExplode > shell.delay);
-    if (invalidAscendEffect)
-    {
-        if (typeof ui !== "undefined" && typeof ui.showError === "function")
-        {
-            ui.showError("Invalid shell", `Ascend load "${invalidAscendEffect.loadName}" fires at delay ${invalidAscendEffect.timeTillExplode}, which exceeds the shell delay of ${shell.delay}.`);
-        }
-        return;
-    }
+    if (!validateShellEditor()) return;
 
     // Validate all named references before testing
     const ctx = buildValidationContext();
@@ -385,7 +367,7 @@ function onTestShellsButtonClick(): void
     {
         if (typeof ui !== "undefined" && typeof ui.showError === "function")
         {
-            ui.showError("Cannot test \u2013 validation failed", formatValidationIssues(issues));
+            ui.showError("Invalid shell", formatValidationIssues(issues));
         }
         return;
     }
@@ -711,7 +693,7 @@ export function createShellsTab()
                                                             {
                                                                 if (typeof ui !== "undefined" && typeof ui.showError === "function")
                                                                 {
-                                                                    ui.showError("Cannot add ascend load", `The last ascend load already fires at delay ${effects[effects.length - 1].timeTillExplode}, which is at or beyond the shell delay of ${currentDelay}.`);
+                                                                    ui.showError("Invalid ascend load", `The last ascend load already fires at delay ${effects[effects.length - 1].timeTillExplode}, which is at or beyond the shell delay of ${currentDelay}.`);
                                                                 }
                                                                 return;
                                                             }

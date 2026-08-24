@@ -6,7 +6,7 @@ import { Effect } from "../../fireworks/structures/Effect";
 
 export function openSprayBurstEffectWindow(effect: SprayBurstEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
-	const size = store(effect?.size ?? 20);
+	const size = store(effect?.size ?? 80);
 	const physicalSize = store(effect?.physicalSize ?? 3);
 	const extraLongevity = store(effect?.extraLongevity ?? 0);
 	const sizePresets = [

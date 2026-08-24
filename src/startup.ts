@@ -1,5 +1,5 @@
 import { showFireworksWindow } from "./ui/fireworksEditorWindow";
-import { isShowPlaying, loadParkState, saveParkState, showPositionTarget, getHasSeenTutorial, setHasSeenTutorial } from "./fireworks/persistent";
+import { loadParkState, saveParkState, showPositionTarget, getHasSeenTutorial, setHasSeenTutorial } from "./fireworks/persistent";
 import { initCustomSprites } from "./img/images";
 import { AddNewsMessage, RemoveNewsMessageIfMessageCorrect } from "./fireworks/helpers";
 import { initPlayerCallbacks } from "./fireworks/fireworksEffectsPlayer";
@@ -27,9 +27,9 @@ export function toggleSpecialColourSchemes(on: boolean = true)
 
 const GetPluginMessage : string = "This park has been made with a Fireworks Show currently playing, made with the Fireworks Plugin. Please download the plugin to view the show at: ";
 let removeMessageAgain: any;
-function addParkMessage()
+function addParkMessageIfShowsRunning()
 {
-	if (isShowPlaying) {
+	if (isShowProgrammeRunning()) {
 		AddNewsMessage(GetPluginMessage, showPositionTarget);
 		removeMessageAgain = context.subscribe("interval.tick", () => {
 			RemoveNewsMessageIfMessageCorrect(GetPluginMessage);
@@ -50,7 +50,7 @@ export function startup()
 	{
 		context.subscribe("map.change", () => loadParkState());
 		context.subscribe("map.save", () => saveParkState());
-		context.subscribe("map.save", () => addParkMessage());
+		context.subscribe("map.save", () => addParkMessageIfShowsRunning());
 	}
 
 	if (typeof ui !== "undefined")

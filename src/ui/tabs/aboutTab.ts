@@ -11,9 +11,9 @@ export function createAboutTab()
                     content: [
                         label({ text: "Created by: {BABYBLUE}" + pluginAuthor }),
                         label({ text: "Version: " + pluginVersion}),
-                        label({ text: "https://github.com/MaxArceus" }),
+                        label({ text: "https://github.com/MaxMallon/OpenRCT2-FireworksPlugin" }),
                         label({ text: "Built with openrct2-flexui" }),
-                        label({ text: "Special Thanks: Basssiiie, Manticore_007"})
+                        label({ text: "Special Thanks: Basssiiie, Manticore_007, TimmyTuner"})
                             
                     ]
                 })

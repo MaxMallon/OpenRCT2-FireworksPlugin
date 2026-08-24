@@ -6,11 +6,11 @@ import { Effect } from "../../fireworks/structures/Effect";
 
 export function openCrackleEffectWindow(effect: CrackleEffect | undefined, onSave: (effect: Effect) => void, onClose?: () => void): void
 {
-	const size = store(effect?.size ?? 20);
-	const physicalSize = store(effect?.physicalSize ?? 3);
+	const size = store(effect?.size ?? 40);
+	const physicalSize = store(effect?.physicalSize ?? 2.5);
 	const delay = store(effect?.delay ?? 1);
 	const colour = store(effect?.colour ?? Colour.BrightYellow);
-	const extraLongevity = store(effect?.extraLongevity ?? 0);
+	const extraLongevity = store(effect?.extraLongevity ?? 20);
 	const sizePresets = [
 		{ label: "S", size: 20, physicalSize: 1.5, extraLongevity: 0 },
 		{ label: "M", size: 40, physicalSize: 2.5, extraLongevity: 20 },

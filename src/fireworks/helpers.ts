@@ -1,5 +1,6 @@
 import { launchSites, saveParkState } from "./persistent";
 import { LaunchSite } from "./structures/LaunchSite";
+import { getMainWindowBounds } from "../ui/windowState";
 
 export function syncLaunchSites(sites: Array<{ name: string; position: CoordsXYZ; entityId?: number }>): void
 {
@@ -130,6 +131,17 @@ export const tileSize = 32;
 //Transform degrees to radians
 export function DegreeToRad(angle: number): number {
 	return angle * Math.PI / 180;
+}
+
+export function isEditorWindowObscuringCenter(): boolean {
+	const bounds = getMainWindowBounds();
+	if (!bounds) return false;
+
+	const screenCenterX = ui.width / 2;
+	const screenCenterY = ui.height / 2;
+
+	return bounds.x < screenCenterX && bounds.x + bounds.width > screenCenterX &&
+	       bounds.y < screenCenterY && bounds.y + bounds.height > screenCenterY;
 }
 
 export function GetFireworkTestLocation(height: number) : CoordsXY{

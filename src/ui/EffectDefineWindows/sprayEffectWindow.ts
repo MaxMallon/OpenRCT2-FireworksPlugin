@@ -11,15 +11,15 @@ export function openSprayEffectWindow(effect: SprayEffectFromGround | undefined,
 	const colour = store(effect?.colour ?? Colour.BrightYellow);
 	const azimuthBase = store(effect?.azimuthBase ?? 0);
 	const tiltBase = store(effect?.tiltBase ?? 0);
-	const timeTillStall = store(effect?.timeTillStall ?? 50);
+	const timeTillStall = store(effect?.timeTillStall ?? 45);
 	const verticalSpread = store(effect?.verticalSpread ?? 0.8);
 
-	// size=amount, physicalSize=timeTillStall, extraLongevity=extraLongevity, spikeLength=verticalSpread*100
+	// size=amount, physicalSize=timeTillStall, extraLongevity=extraLongevity, spikeLength=verticalSpread
 	const sizePresets: EffectSizePreset[] = [
-		{ label: "S",  size: 10, physicalSize: 35,  extraLongevity: 0,  spikeLength: 70 },
-		{ label: "M",  size: 20, physicalSize: 45,  extraLongevity: 0,  spikeLength: 80 },
-		{ label: "L",  size: 35, physicalSize: 55,  extraLongevity: 20, spikeLength: 85 },
-		{ label: "XL", size: 55, physicalSize: 65, extraLongevity: 50, spikeLength: 90 }
+		{ label: "S",  size: 10, physicalSize: 35,  extraLongevity: 0,  spikeLength: 0.7 },
+		{ label: "M",  size: 20, physicalSize: 45,  extraLongevity: 0,  spikeLength: 0.8 },
+		{ label: "L",  size: 35, physicalSize: 55,  extraLongevity: 20, spikeLength: 0.85 },
+		{ label: "XL", size: 55, physicalSize: 65, extraLongevity: 50, spikeLength: 0.9 }
 	];
 
 	openEffectWindow({
@@ -33,7 +33,7 @@ export function openSprayEffectWindow(effect: SprayEffectFromGround | undefined,
 				amount.set(preset.size);
 				timeTillStall.set(preset.physicalSize);
 				extraLongevity.set(preset.extraLongevity);
-				verticalSpread.set((preset.spikeLength ?? 80) / 100);
+				verticalSpread.set(preset.spikeLength ?? 0.8);
 			}),
 			createNumberRow("Amount", amount, 1, 100),
 			createNumberRow("Extra Longevity", extraLongevity, 0, 50),

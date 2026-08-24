@@ -33,6 +33,7 @@ const launchSiteDisplayPosition = compute(
 	}
 );
 export const pickerToolId = "Fireworks_Site_Selection";
+const pickerToolActive = store(false);
 
 function deactivatePickerTool() {
 	if (typeof ui === "undefined") {
@@ -49,6 +50,7 @@ function deactivatePickerTool() {
 	if (typeof uiApi.cancelTool === "function") {
 		uiApi.cancelTool();
 	}
+	pickerToolActive.set(false);
 }
 
 function getTileHeight(x: number, y: number) {
@@ -77,9 +79,11 @@ function onPickSiteButtonClick() {
 		return;
 	}
 
+	pickerToolActive.set(true);
 	uiApi.activateTool({
 		id: pickerToolId,
 		cursor: "cross_hair",
+		onFinish: () => pickerToolActive.set(false),
 		onDown: (event: any) => {
 			const coords = event?.mapCoords ?? event?.coords ?? event?.location ?? event?.tile ?? event?.position;
 			const entityId = event?.entityId ?? event?.entity?.id ?? event?.entity?.entityId;
@@ -360,6 +364,7 @@ export function createLaunchSitesTab() {
 										button({
 											text: "Pick on map",
 											width: 120,
+											isPressed: pickerToolActive,
 											onClick: onPickSiteButtonClick
 										}),
 										flexible({

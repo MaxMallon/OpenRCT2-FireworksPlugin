@@ -44,7 +44,7 @@ export class SprayFanEffect extends BurstEffect
 						colour = this.colours.getColour("colour2");
 					break;
 				case "colour-sequence":				
-					colour = this.colours.colourList[Math.round(this.colours.colourList.length / this.numberSprays * i)];
+					colour = this.colours.colourList[Math.min(Math.round(this.colours.colourList.length / this.numberSprays * i), this.colours.colourList.length - 1)];
 					break;
 			}
 			const spray = new SprayEffectFromGround(this.amount, azimuthDeg, tiltDeg, this.timeTillStall, 0.8, this.extraLongevity, colour);

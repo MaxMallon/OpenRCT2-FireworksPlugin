@@ -135,28 +135,30 @@ export class SphereEffect extends BurstEffect {
 					case "blinking-uniform-6zones": {
 						let f = 0;
 						c1 = this.colours.getColour("baseColour");
-						if (x > this.size * 0.85) {
+						const xyThreshold = this.physicalSize * 0.85;
+						const zThreshold = adjustedZRadius * 0.85;
+						if (x > xyThreshold) {
 							c2 = this.colours.getColour("colour1");
 							f = 0;
 
 						}
-						else if (x < this.size * -0.85) {
+						else if (x < -xyThreshold) {
 							c2 = this.colours.getColour("colour2");
 							f = 0;
 						}
-						else if (y > this.size * 0.85) {
+						else if (y > xyThreshold) {
 							c2 = this.colours.getColour("colour3");
 							f = 2;
 						}
-						else if (y < this.size * -0.85) {
+						else if (y < -xyThreshold) {
 							c2 = this.colours.getColour("colour4");
 							f = 2;
 						}
-						else if (z > this.size * 0.85) {
+						else if (z > zThreshold) {
 							c2 = this.colours.getColour("colour5");
 							f = 4;
 						}
-						else if (z < this.size * -0.85) {
+						else if (z < -zThreshold) {
 							c2 = this.colours.getColour("colour6");
 							f = 4;
 						}

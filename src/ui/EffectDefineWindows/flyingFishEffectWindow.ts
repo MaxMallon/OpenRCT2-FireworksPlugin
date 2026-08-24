@@ -6,9 +6,9 @@ import { Effect } from "../../fireworks/structures/Effect";
 
 export function openFlyingFishEffectWindow(effect: FlyingFishEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
-	const size = store(Math.min(100, Math.max(1, effect?.size ?? 20)));
-	const physicalSize = store(Math.min(6, Math.max(0.5, effect?.physicalSize ?? 2)));
-	const extraLongevity = store(Math.min(100, Math.max(0, effect?.extraLongevity ?? 0)));
+	const size = store(Math.min(100, Math.max(1, effect?.size ?? 30)));
+	const physicalSize = store(Math.min(6, Math.max(0.5, effect?.physicalSize ?? 3.8)));
+	const extraLongevity = store(Math.min(100, Math.max(0, effect?.extraLongevity ?? 10)));
 	const colours = createLoadColoursEditor(effect?.colours, ["colour1", "colour2", "colour3", "trailColour"]);
 	const patternOptions = ["one-colour", "two-colours", "three-colours", "colour-sequence"];
 	const sizePresets = [
