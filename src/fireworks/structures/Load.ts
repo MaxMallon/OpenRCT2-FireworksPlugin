@@ -1,8 +1,13 @@
 import { ValidationContext, ValidationIssue } from "../usageChecker";
 import { Effect } from "./Effect";
+import { PersistentDataObject } from "./PersistentDataObject";
 
-export class Load {
-	constructor(public effects: Effect[] = [], public name: string = "") { }
+export class Load extends PersistentDataObject {
+	readonly className: string = "Load";
+
+	constructor(public effects: Effect[] = [], public name: string = "") {
+		super();
+	}
 
 	isValid(ctx: ValidationContext, issues: ValidationIssue[], path: string): boolean {
 		
@@ -15,10 +20,18 @@ export class Load {
 		return valid;
 	}
 
-	toParkData(): any {
+	/** Estimated number of ticks until every effect in this load has finished. */
+	getDuration(): number {
+		let max = 0;
+		for (const effect of this.effects) {
+			max = Math.max(max, effect.getDuration());
+		}
+		return max;
+	}
+
+	override toParkData(): any {
 		return {
-			className: "Load",
-			name: this.name,
+			...super.toParkData(),
 			effects: this.effects.map(effect => effect.toParkData())
 		};
 	}
@@ -28,17 +41,10 @@ export class Load {
 	}
 	
 	GetSpriteString(): string {
-		switch (this.effects.length) {
-			case 0:
-				return "";
-			case 1:
-				return this.effects[0]?.GetSpriteString();
-			case 2:
-				return this.effects[0]?.GetSpriteString() + this.effects[1]?.GetSpriteString();
-			case 3:
-				return this.effects[0]?.GetSpriteString() + this.effects[1]?.GetSpriteString() + this.effects[2]?.GetSpriteString();
-			default:
-				return this.effects[0]?.GetSpriteString() + this.effects[1]?.GetSpriteString() + this.effects[2]?.GetSpriteString() + this.effects[3]?.GetSpriteString();
-		}
+		let spriteString = "";
+        for (const effect of this.effects.slice(0, 4)) {
+            spriteString += effect?.GetSpriteString();
+        }
+        return spriteString;
 	}
 }

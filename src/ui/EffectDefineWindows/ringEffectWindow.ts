@@ -1,8 +1,29 @@
 import { checkbox, store } from "openrct2-flexui";
 import { RingEffect } from "../../fireworks/structures/effects/burstEffects/ringEffect";
-import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, normalizePatternSelection } from "./shared";
-import { openEffectWindow } from "./template";
+import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, ExplanationParagraph, normalizePatternSelection , openEffectWindow } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
+
+const explanation: ExplanationParagraph[] = [
+	{ text: "A ring of clumps of particles, possibly with a trail, and possibly bursting at the end.\n", height: 40 },
+	{ term: "Density", description: "Affects number of particles", height: 14 },
+	{ term: "Size", description: "Physical size of effect, affects duration\nof the effect", height: 28 },
+	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
+	{ term: "Azimuth", description: "Orientation of the ring in the horizontal plane", height: 14 },
+	{ term: "Tilt", description: "Orientation of the ring in the vertical plane", height: 14 },
+	{ term: "Random Angle", description: "Ignores azimuth and tilt, using a random\norientation each time the ring fires", height: 28 },
+	{ term: "Comet Trail", description: "Gives each particle in the ring a trailing streak", height: 14 },
+	{ term: "Comet Trail Density", description: "Controls the density of the comet trails", height: 14 },
+	{ term: "Comet Trail Width", description: "Controls the width of the comet trails", height: 14 },
+	{ term: "Comets Burst At End", description: "Lets the comets pop into a small burst\nat the end", height: 28 },
+	{ term: "Colour pattern", description: "Determines the sequence and arrangement\nof colours", height: 28 },
+	{ term: "   solid", description: "A ring of one colour", height: 14 },
+	{ term: "   solid-transition", description: "A ring of one colour that changes colour\nhalfway through", height: 28 },
+	{ term: "   2-col", description: "A ring of alternating two colours", height: 14 },
+	{ term: "   2-col-transition", description: "A ring of alternating two colours that\nchange halfway through", height: 28 },
+	{ term: "   colour-sequence", description: "A ring of colours arranged according to a\nsequence", height: 28 },
+	{ term: "Trail 1", description: "Colour one of the trail", height: 14 },
+	{ term: "Trail 2", description: "Colour two of the trail", height: 14 },
+];
 
 export function openRingEffectWindow(effect: RingEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
@@ -13,6 +34,7 @@ export function openRingEffectWindow(effect: RingEffect | undefined, onSave: (ef
 	const microburst = store(effect?.microburst ?? false);
 	const azimuth = store(effect?.azimuth ?? 0);
 	const tilt = store(effect?.tilt ?? 0);
+	const randomAngle = store(effect?.randomAngle ?? false);
 	const trailDensity = store(effect?.trailDensity ?? 0.5);
 	const trailWidth = store(effect?.trailWidth ?? 3);
 	const colours = createLoadColoursEditor(effect?.colours, ["head", "trail1", "trail2", "head1", "head2", "head1A", "head2A", "head1B", "head2B"]);
@@ -44,14 +66,15 @@ export function openRingEffectWindow(effect: RingEffect | undefined, onSave: (ef
 		applyLoadColoursEditor(colours);
 		isReopening = true;
 		handle?.close();
-		openRingEffectWindow(new RingEffect(size.get(), physicalSize.get(), extraLongevity.get(), colours.colours, azimuth.get(), tilt.get(), trail.get(), microburst.get(), trailDensity.get(), trailWidth.get()), onSave, isEditing, onClose);
+		openRingEffectWindow(new RingEffect(size.get(), physicalSize.get(), extraLongevity.get(), colours.colours, azimuth.get(), tilt.get(), trail.get(), microburst.get(), trailDensity.get(), trailWidth.get(), randomAngle.get()), onSave, isEditing, onClose);
 	};
 
 	handle = openEffectWindow({
 		title: "Ring Effect",
 		width: 340,
-		height: 430,
+		height: 440,
 		saveText: isEditing ? "Update Effect" : "Add Effect",
+		explanation,
 		onClose: () => {
 			if (isReopening) {
 				isReopening = false;
@@ -71,6 +94,7 @@ export function openRingEffectWindow(effect: RingEffect | undefined, onSave: (ef
 			}),
 			createNumberRow("Azimuth", azimuth, 0, 360),
 			createNumberRow("Tilt", tilt, 0, 360),
+			checkbox({ text: "Random Angle", isChecked: randomAngle, onChange: value => randomAngle.set(value) }),
 			checkbox({ text: "Comet Trail", isChecked: trail, onChange: value => trail.set(value) }),
 			createNumberRow("Comet Trail Density", trailDensity, 0, 1, 0.1),
 			createNumberRow("Comet Trail Width", trailWidth, 0, 5, 0.5),
@@ -82,7 +106,7 @@ export function openRingEffectWindow(effect: RingEffect | undefined, onSave: (ef
 		],
 		onSave: () => {
 			applyLoadColoursEditor(colours);
-			onSave(new RingEffect(size.get(), physicalSize.get(), extraLongevity.get(), colours.colours, azimuth.get(), tilt.get(), trail.get(), microburst.get(), trailDensity.get(), trailWidth.get()));
+			onSave(new RingEffect(size.get(), physicalSize.get(), extraLongevity.get(), colours.colours, azimuth.get(), tilt.get(), trail.get(), microburst.get(), trailDensity.get(), trailWidth.get(), randomAngle.get()));
 		}
 	});
 }

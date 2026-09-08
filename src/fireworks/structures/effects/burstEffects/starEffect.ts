@@ -6,14 +6,18 @@ import { BurstEffect, EffectType } from "../../Effect";
 import { GetColouredEffectSprite, sprite } from "../../../../img/images";
 
 export class StarEffect extends BurstEffect {
+	override readonly className: string = "StarEffect";
+
 	constructor(size: number, physicalSize: number, extraLongevity: number, colours: LoadColours, public spikeLength: number) {
 		super(EffectType.Star, size, physicalSize, extraLongevity, colours);
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "StarEffect" }; }
-
 	static fromParkData(effect: any): StarEffect {
 		return new StarEffect(effect?.size ?? 0, effect?.physicalSize ?? 0, effect?.extraLongevity ?? 0, LoadColours.fromParkData(effect?.colours), effect?.spikeLength ?? 0);
+	}
+
+	override getDuration(): number {
+		return this.extraLongevity + this.physicalSize * 35;
 	}
 
 	override Make(posOri: CoordsXYZ, _velocity: CoordsXYZ): BurstEffect | undefined {

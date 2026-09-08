@@ -1,6 +1,6 @@
 import { Colour } from "openrct2-flexui";
 import { ColourSequence } from "./structures/ColourStructures";
-import { BigBouqetEffect } from "./structures/effects/burstEffects/bigBouqetEffect";
+import { ShellOfShellsEffect } from "./structures/effects/burstEffects/shellOfShellsEffect";
 import { CometFanEffect } from "./structures/effects/burstEffects/cometFanEffect";
 import { MicroBurstEffect } from "./structures/effects/burstEffects/microBurstEffect";
 import { PalmEffect, SprayBurstEffect } from "./structures/effects/burstEffects/palmEffect";
@@ -15,6 +15,8 @@ import { FountainEffect } from "./structures/effects/EmitterEffects/fountainEffe
 import { UnknownEffect } from "./structures/effects/unknownEffect";
 import { CometEffect } from "./structures/effects/burstEffects/cometEffect";
 import { FlyingFishEffect } from "./structures/effects/burstEffects/flyingFishEffect";
+import { SingularFishEffect } from "./structures/effects/EmitterEffects/singularFishEffect";
+import { TrailEffect } from "./structures/effects/EmitterEffects/trailEffect";
 import { TourbillionRisingWispEffect } from "./structures/effects/EmitterEffects/tourbillionRisingWispEffect";
 import { Effect } from "./structures/Effect";
 import { LaunchSite } from "./structures/LaunchSite";
@@ -22,13 +24,20 @@ import { Shell, GroundEffect } from "./structures/Firework";
 import { Sequence } from "./structures/Sequence";
 import { Load } from "./structures/Load";
 import { Show } from "./structures/Show";
+import { pluginVersion } from "../pluginInfo";
 
 interface SerializedPlayerState {
 	fireworksToBeShot: any[];
 }
 
+interface SerializedExplosion {
+	loadName: string;
+	timeTillExplode: number;
+	particleId: number;
+}
+
 interface SerializedShowPlayerState {
-	activeShowName: string;
+	showName: string;
 	lastFireTicksElapsed: number;
 	lastFireDay: number;
 	lastFireMonth: number;
@@ -36,16 +45,75 @@ interface SerializedShowPlayerState {
 	announcementSent: boolean;
 }
 
+// Editor states persist the in-progress draft as the domain object's park data,
+// plus any editor-only fields that cannot be represented by the domain object.
+export interface SerializedLaunchSiteEditorState {
+	launchSite?: any;
+}
+
+export interface SerializedLoadEditorState {
+	load?: any;
+	isEffectDeleteMode?: boolean;
+}
+
+export interface SerializedShellEditorState {
+	shell?: any;
+	syncHeightAndDelay?: boolean;
+}
+
+export interface SerializedGroundEffectEditorState {
+	groundEffect?: any;
+	isEffectDeleteMode?: boolean;
+}
+
+export interface SerializedSequenceEditorState {
+	sequence?: any;
+	lockOnTime?: boolean;
+	entryEditTimeText?: string;
+	entryEditDelayText?: string;
+	entryEditIndexText?: string;
+	entryEditItemLabel?: string;
+	entryEditItemName?: string;
+	entryEditItemType?: string;
+	entryEditNextItemAfterEnd?: boolean;
+	isDeleteMode?: boolean;
+	isExpandedView?: boolean;
+	lastUsedItemName?: string;
+	lastUsedItemType?: string;
+	lastUsedItemLabel?: string;
+	lastUsedNextItemAfterEnd?: boolean;
+}
+
+export interface SerializedShowEditorState {
+	show?: any;
+}
+
+export interface SerializedColourSequenceEditorState {
+	colourSequence?: any;
+}
+
+export interface SerializedEditorStates {
+	launchSite?: SerializedLaunchSiteEditorState;
+	load?: SerializedLoadEditorState;
+	shell?: SerializedShellEditorState;
+	groundEffect?: SerializedGroundEffectEditorState;
+	sequence?: SerializedSequenceEditorState;
+	show?: SerializedShowEditorState;
+	colourSequence?: SerializedColourSequenceEditorState;
+}
+
 interface PlaybackState {
 	ticks: number;
 	fireworkEffectsActive: boolean;
 	interruptWhenTooManyParticles: boolean;
 	players: SerializedPlayerState[];
-	showPlayer?: SerializedShowPlayerState;
+	pendingExplosions?: SerializedExplosion[];
+	pendingEmitters?: any[];
+	showPlayers?: SerializedShowPlayerState[];
 }
 
-interface ParkStateV1 {
-	version: 1;
+interface ParkState {
+	version: string;
 	launchSites: any[];
 	loadList: any[];
 	shellList: any[];
@@ -53,14 +121,9 @@ interface ParkStateV1 {
 	sequenceList: any[];
 	shotShow: any[];
 	colourSequences: any[];
-}
-
-interface ParkStateV2 extends Omit<ParkStateV1, "version"> {
-	version: 2;
 	playback: PlaybackState;
+	editors?: SerializedEditorStates;
 }
-
-type ParkState = ParkStateV1 | ParkStateV2;
 
 export function defaultColourSequences(): ColourSequence[] {
 	return [
@@ -78,18 +141,23 @@ export function defaultColourSequences(): ColourSequence[] {
 	];
 }
 
-function decodeEffect(effect: any): Effect {
+export function decodeEffect(effect: any): Effect {
 	switch (effect?.className) {
 		case "PalmEffect":
 			return PalmEffect.fromParkData(effect);
 		case "SprayBurstEffect":
 			return SprayBurstEffect.fromParkData(effect);
 		case "BigBouqetEffect":
-			return BigBouqetEffect.fromParkData(effect, decodeEffect);
+		case "ShellOfShellsEffect":
+			return ShellOfShellsEffect.fromParkData(effect, decodeEffect);
 		case "TourbillionRisingWispEffect":
 			return TourbillionRisingWispEffect.fromParkData(effect);
 		case "FlyingFishEffect":
 			return FlyingFishEffect.fromParkData(effect);
+		case "SingularFishEffect":
+			return SingularFishEffect.fromParkData(effect);
+		case "TrailEffect":
+			return TrailEffect.fromParkData(effect);
 		case "CometEffect":
 			return CometEffect.fromParkData(effect);
 		case "CometFanEffect":
@@ -114,6 +182,8 @@ function decodeEffect(effect: any): Effect {
 			return SprayFanEffect.fromParkData(effect);
 		case "StarEffect":
 			return StarEffect.fromParkData(effect);
+		case "TrailEffect":
+			return TrailEffect.fromParkData(effect);
 		case "UnknownEffect":
 			return UnknownEffect.fromParkData(effect);
 		default:
@@ -130,9 +200,10 @@ export function serializeParkState(state: {
 	shotShowMap: Map<string, Show>;
 	colourSequences: ColourSequence[];
 	playback: PlaybackState;
+	editors?: SerializedEditorStates;
 }): string {
-	const parkState: ParkStateV2 = {
-		version: 2,
+	const parkState: ParkState = {
+		version: pluginVersion,
 		launchSites: state.launchSites.map(item => item.toParkData()),
 		loadList: [...state.loadMap.values()].map(item => item.toParkData()),
 		shellList: [...state.shellMap.values()].map(item => item.toParkData()),
@@ -140,7 +211,8 @@ export function serializeParkState(state: {
 		sequenceList: [...state.sequenceMap.values()].map(item => item.toParkData()),
 		shotShow: [...state.shotShowMap.values()].map(item => item.toParkData()),
 		colourSequences: state.colourSequences.map(item => item.toParkData()),
-		playback: state.playback
+		playback: state.playback,
+		editors: state.editors
 	};
 
 	return JSON.stringify(parkState);
@@ -156,6 +228,8 @@ export function deserializeParkState(rawState: string, applyState: {
 	setColourSequences: (value: ColourSequence[]) => void;
 	resetTransientState: () => void;
 	restorePlaybackState?: (playback: PlaybackState) => void;
+	restoreEditorState?: (editors?: SerializedEditorStates, decodeEffect?: (effect: any) => Effect) => void;
+	onPluginVersionLoaded?: (version: string) => void;
 }): boolean {
 	let parsed: ParkState;
 	try {
@@ -166,9 +240,10 @@ export function deserializeParkState(rawState: string, applyState: {
 		return false;
 	}
 
-	if (!parsed || (parsed.version !== 1 && parsed.version !== 2)) {
+	if (!parsed || typeof parsed.version !== "string") {
 		return false;
 	}
+	applyState.onPluginVersionLoaded?.(parsed.version);
 
 	applyState.resetTransientState();
 	applyState.setLaunchSites((parsed.launchSites ?? []).map(item => LaunchSite.fromParkData(item)));
@@ -199,6 +274,13 @@ export function deserializeParkState(rawState: string, applyState: {
 		const seq = Sequence.fromParkData(item);
 		if (seq.name) sequenceMap.set(seq.name, seq);
 	}
+	// fromParkData() recalculates without a lookup (the map isn't fully built yet during
+	// the loop above), so nextItemAfterEnd gaps that depend on a nested sequence's duration
+	// are computed as if that nested sequence had zero length. Redo it now that every
+	// sequence is available, so nested durations are correctly folded in.
+	for (const seq of sequenceMap.values()) {
+		seq.recalculateCumulativeTimes(0, name => sequenceMap.get(name));
+	}
 	applyState.setSequenceMap(sequenceMap);
 
 	const shotShowMap = new Map<string, Show>();
@@ -210,11 +292,15 @@ export function deserializeParkState(rawState: string, applyState: {
 
 	applyState.setColourSequences((parsed.colourSequences && parsed.colourSequences.length > 0 ? parsed.colourSequences : defaultColourSequences().map(item => item.toParkData())).map(item => ColourSequence.fromParkData(item)));
 
-	if (parsed.version === 2 && applyState.restorePlaybackState) {
+	if (applyState.restorePlaybackState) {
 		applyState.restorePlaybackState(parsed.playback);
+	}
+
+	if (applyState.restoreEditorState) {
+		applyState.restoreEditorState(parsed.editors, decodeEffect);
 	}
 
 	return true;
 }
 
-export type { PlaybackState, SerializedPlayerState, SerializedShowPlayerState };
+export type { PlaybackState, SerializedPlayerState, SerializedShowPlayerState, SerializedExplosion };

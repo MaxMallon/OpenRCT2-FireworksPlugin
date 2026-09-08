@@ -1,20 +1,30 @@
-import { absolute, box, button, Colour, compute, flexible, graphics, label, LayoutDirection, listview, spinner, store, textbox, viewport } from "openrct2-flexui";
+import { absolute, box, button, Colour, compute, flexible, graphics, label, LayoutDirection, listview, store, textbox, viewport } from "openrct2-flexui";
 import { groupbox } from "openrct2-flexui";
-import { syncLaunchSites } from "../../fireworks/helpers";
-import { launchSites, launchSitesRevision } from "../../fireworks/persistent";
+import { numberInputSpinner } from "../numberInputSpinner";
+import { launchSites, launchSitesRevision, setLaunchSites } from "../../fireworks/persistent";
 import { customImageFor } from "../../img/images";
 import { findLaunchSiteUsages, removeLaunchSiteUsages } from "../../fireworks/usageChecker";
 import { openUsageWarningWindow } from "../usageWarningWindow";
 import { LaunchSite } from "../../fireworks/structures/LaunchSite";
+import { colouredButton } from "../ColouredButton";
+import { SerializedLaunchSiteEditorState } from "../../fireworks/parkStorage";
+import { confirmDiscardChanges } from "../discardChangesWindow";
 
+const DEFAULT_LAUNCH_SITE_EDITOR = {
+	name: "",
+	x: 0,
+	y: 0,
+	z: 0,
+	entityId: undefined as number | undefined,
+	selectedIndex: undefined as number | undefined
+};
 
-
-const launchSiteX = store(0);
-const launchSiteY = store(0);
-const launchSiteZ = store(0);
-const launchSiteName = store("");
-const launchSiteEntityId = store<number | undefined>(undefined);
-const selectedLaunchSiteIndex = store<number | undefined>(undefined);
+const launchSiteX = store(DEFAULT_LAUNCH_SITE_EDITOR.x);
+const launchSiteY = store(DEFAULT_LAUNCH_SITE_EDITOR.y);
+const launchSiteZ = store(DEFAULT_LAUNCH_SITE_EDITOR.z);
+const launchSiteName = store(DEFAULT_LAUNCH_SITE_EDITOR.name);
+const launchSiteEntityId = store<number | undefined>(DEFAULT_LAUNCH_SITE_EDITOR.entityId);
+const selectedLaunchSiteIndex = store<number | undefined>(DEFAULT_LAUNCH_SITE_EDITOR.selectedIndex);
 const tickCounter = store(0);
 const launchSiteDisplayPosition = compute(
 	launchSiteX,
@@ -179,16 +189,14 @@ function addLaunchSite() {
 	})();
 	if (siteIndex >= 0) {
 		// Update existing site
-		launchSites[siteIndex] = new LaunchSite(finalName, { x: storeX, y: storeY, z: storeZ }, entityId);
-		syncLaunchSites(launchSites.map(site => ({ name: site.name, position: site.position, entityId: site.entityId })));
+		const updatedSites = [...launchSites];
+		updatedSites[siteIndex] = new LaunchSite(finalName, { x: storeX, y: storeY, z: storeZ }, entityId);
+		setLaunchSites(updatedSites);
 	}
 	else {
 		// Add new site
-		launchSites.push(new LaunchSite(finalName, { x: storeX, y: storeY, z: storeZ }, entityId));
-		syncLaunchSites(launchSites.map(site => ({ name: site.name, position: site.position, entityId: site.entityId })));
+		setLaunchSites([...launchSites, new LaunchSite(finalName, { x: storeX, y: storeY, z: storeZ }, entityId)]);
 	}
-
-	launchSitesRevision.set(launchSitesRevision.get() + 1);
 }
 
 function deleteSelectedLaunchSite() {
@@ -205,10 +213,8 @@ function deleteSelectedLaunchSite() {
 	const usages = findLaunchSiteUsages(site.name);
 
 	const doDelete = () => {
-		launchSites.splice(selectedIndex, 1);
+		setLaunchSites(launchSites.filter((_, index) => index !== selectedIndex));
 		selectedLaunchSiteIndex.set(undefined);
-		syncLaunchSites(launchSites.map(s => ({ name: s.name, position: s.position, entityId: s.entityId })));
-		launchSitesRevision.set(launchSitesRevision.get() + 1);
 	};
 
 	if (usages.length > 0) {
@@ -225,6 +231,64 @@ function deleteSelectedLaunchSite() {
 	}
 
 	doDelete();
+}
+
+export function getLaunchSiteEditorState(): SerializedLaunchSiteEditorState {
+	return {
+		launchSite: new LaunchSite(
+			launchSiteName.get(),
+			{ x: launchSiteX.get(), y: launchSiteY.get(), z: launchSiteZ.get() },
+			launchSiteEntityId.get()
+		).toParkData()
+	};
+}
+
+export function restoreLaunchSiteEditorState(state?: SerializedLaunchSiteEditorState): void {
+	if (!state || !state.launchSite) {
+		resetLaunchSiteEditor();
+		return;
+	}
+	const site = LaunchSite.fromParkData(state.launchSite);
+	launchSiteName.set(site.name);
+	launchSiteX.set(site.position.x);
+	launchSiteY.set(site.position.y);
+	launchSiteZ.set(site.position.z);
+	launchSiteEntityId.set(site.entityId);
+	selectedLaunchSiteIndex.set(DEFAULT_LAUNCH_SITE_EDITOR.selectedIndex);
+}
+
+export function resetLaunchSiteEditor(): void {
+	launchSiteName.set(DEFAULT_LAUNCH_SITE_EDITOR.name);
+	launchSiteX.set(DEFAULT_LAUNCH_SITE_EDITOR.x);
+	launchSiteY.set(DEFAULT_LAUNCH_SITE_EDITOR.y);
+	launchSiteZ.set(DEFAULT_LAUNCH_SITE_EDITOR.z);
+	launchSiteEntityId.set(DEFAULT_LAUNCH_SITE_EDITOR.entityId);
+	selectedLaunchSiteIndex.set(DEFAULT_LAUNCH_SITE_EDITOR.selectedIndex);
+}
+
+export function isLaunchSiteEditorDirty(): boolean {
+	const currentName = launchSiteName.get().trim();
+	const currentX = launchSiteX.get();
+	const currentY = launchSiteY.get();
+	const currentZ = launchSiteZ.get();
+	const currentEntityId = launchSiteEntityId.get();
+
+	if (!currentName) {
+		return currentX !== DEFAULT_LAUNCH_SITE_EDITOR.x ||
+			currentY !== DEFAULT_LAUNCH_SITE_EDITOR.y ||
+			currentZ !== DEFAULT_LAUNCH_SITE_EDITOR.z ||
+			currentEntityId !== DEFAULT_LAUNCH_SITE_EDITOR.entityId;
+	}
+
+	const saved = launchSites.find(s => s.name === currentName);
+	if (!saved) {
+		return true;
+	}
+
+	return saved.position.x !== currentX ||
+		saved.position.y !== currentY ||
+		saved.position.z !== currentZ ||
+		saved.entityId !== currentEntityId;
 }
 
 function loadLaunchSite(index: number) {
@@ -288,12 +352,7 @@ function moveByDirection(direction: "up" | "down" | "left" | "right"): void {
 }
 
 function clearCurrentSite() {
-	launchSiteName.set("");
-	launchSiteX.set(0);
-	launchSiteY.set(0);
-	launchSiteZ.set(0);
-	launchSiteEntityId.set(undefined);
-	selectedLaunchSiteIndex.set(undefined);
+	resetLaunchSiteEditor();
 }
 
 export function createLaunchSitesTab() {
@@ -344,27 +403,31 @@ export function createLaunchSitesTab() {
 										flexible({
 											direction: LayoutDirection.Horizontal,
 											content: [
-												button({
-													text: "Add",
-													width: 70,
+												colouredButton({
+													text: "{WHITE}Add Site",
+													width: 70, height: 18,
+                                                    colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
 													onClick: addLaunchSite
 												}),
-												button({
-													text: "New",
-													width: 70,
-													onClick: clearCurrentSite
+												colouredButton({
+													text: "{WHITE}New",
+													width: 70, height: 18,
+                                                    colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
+													onClick: () => confirmDiscardChanges(isLaunchSiteEditorDirty, clearCurrentSite)
 												}),
-												button({
-													text: "Delete",
-													width: 70,
+												colouredButton({
+													text: "{WHITE}Delete Site",
+													width: 70, height: 18,
+                                                    colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
 													onClick: deleteSelectedLaunchSite
 												})
 											]
 										}),
-										button({
+										colouredButton({
 											text: "Pick on map",
-											width: 120,
-											isPressed: pickerToolActive,
+											width: 120, height: 18,
+                                            colour: Colour.OliveDark, colourDark: Colour.GrassGreenDark, colourLight: Colour.OliveGreen,
+											pressed: pickerToolActive,
 											onClick: onPickSiteButtonClick
 										}),
 										flexible({
@@ -373,9 +436,10 @@ export function createLaunchSitesTab() {
 												label({
 													text: compute(launchSiteEntityId, value => value === undefined ? "Entity: none" : `Entity: ${value}`)
 												}),
-												button({
+												colouredButton({
 													text: "Unfollow",
-													width: 70,
+													width: 70, height: 18,
+                                                    colour: Colour.OliveDark, colourDark: Colour.GrassGreenDark, colourLight: Colour.OliveGreen,
 													onClick: unfollowEntity
 												})
 											]
@@ -385,47 +449,35 @@ export function createLaunchSitesTab() {
 											content: [groupbox({
 												text: compute(launchSiteEntityId, value => value === undefined ? "Coordinates" : "Offset from entity"),
 												content: [
-													flexible({
-														direction: LayoutDirection.Horizontal,
-														content: [
-															label({ text: "X", width: 20 }),
-															spinner({
-																value: launchSiteX,
-																onChange: value => launchSiteX.set(value),
-																width: 110,
-																step: 1,
-																minimum: -10000,
-																maximum: 10000
-															})
-														]
+													numberInputSpinner({
+														labelText: "X",
+														labelWidth: 20,
+														valueStore: launchSiteX,
+														onChange: value => launchSiteX.set(value),
+														width: 110,
+														step: 1,
+														minimum: -10000,
+														maximum: 10000
 													}),
-													flexible({
-														direction: LayoutDirection.Horizontal,
-														content: [
-															label({ text: "Y", width: 20 }),
-															spinner({
-																value: launchSiteY,
-																onChange: value => launchSiteY.set(value),
-																width: 110,
-																step: 1,
-																minimum: -10000,
-																maximum: 10000
-															})
-														]
+													numberInputSpinner({
+														labelText: "Y",
+														labelWidth: 20,
+														valueStore: launchSiteY,
+														onChange: value => launchSiteY.set(value),
+														width: 110,
+														step: 1,
+														minimum: -10000,
+														maximum: 10000
 													}),
-													flexible({
-														direction: LayoutDirection.Horizontal,
-														content: [
-															label({ text: "Z", width: 20 }),
-															spinner({
-																value: launchSiteZ,
-																onChange: value => launchSiteZ.set(value),
-																width: 110,
-																step: 1,
-																minimum: -1000,
-																maximum: 1000
-															})
-														]
+													numberInputSpinner({
+														labelText: "Z",
+														labelWidth: 20,
+														valueStore: launchSiteZ,
+														onChange: value => launchSiteZ.set(value),
+														width: 110,
+														step: 1,
+														minimum: -1000,
+														maximum: 1000
 													})
 												]
 											}),
@@ -532,7 +584,7 @@ export function createLaunchSitesTab() {
 											height: "1w",
 											canSelect: true,
 											selectedCell: compute(selectedLaunchSiteIndex, idx => idx === undefined ? null : { row: idx, column: 0 }),
-											onClick: row => loadLaunchSite(row)
+											onClick: row => confirmDiscardChanges(isLaunchSiteEditorDirty, () => loadLaunchSite(row))
 										})
 									]
 								})

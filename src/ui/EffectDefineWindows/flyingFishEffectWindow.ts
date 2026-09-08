@@ -1,8 +1,20 @@
 import { store } from "openrct2-flexui";
 import { FlyingFishEffect } from "../../fireworks/structures/effects/burstEffects/flyingFishEffect";
-import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, normalizePatternSelection } from "./shared";
-import { openEffectWindow } from "./template";
+import { openEffectWindow, applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, ExplanationParagraph, normalizePatternSelection } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
+
+const explanation: ExplanationParagraph[] = [
+	{ text: "A burst of headless comets that starts of much like a palm,\nuntil the heads suddenly light up, and the comets proppel themselves\nin random directions, like a school of fish darting off.", height: 40 },
+	{ term: "Density", description: "Affects number of particles", height: 14 },
+	{ term: "Size", description: "Physical size of effect, affects duration\nof the effect", height: 28 },
+	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
+	{ term: "Colour pattern", description: "Determines the sequence and arrangement\nof colours", height: 28 },
+	{ term: "   one-colour", description: "One colour for the fish", height: 14 },
+	{ term: "   two-colours", description: "Two colours for the fish", height: 14 },
+	{ term: "   three-colours", description: "Three colours for the fish", height: 14 },
+	{ term: "   colour-sequence", description: "Using a colour sequence in random order\nfor the fish", height: 28 },
+	{ term: "Trail Colour", description: "Colour of the trails the fish leave behind", height: 14 },
+];
 
 export function openFlyingFishEffectWindow(effect: FlyingFishEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
@@ -38,8 +50,9 @@ export function openFlyingFishEffectWindow(effect: FlyingFishEffect | undefined,
 	handle = openEffectWindow({
 		title: "Flying Fish Effect",
 		width: 320,
-		height: 490,
+		height: 500,
 		saveText: isEditing ? "Update Effect" : "Add Effect",
+		explanation,
 		onClose: () => {
 			if (isReopening) {
 				isReopening = false;
@@ -57,7 +70,7 @@ export function openFlyingFishEffectWindow(effect: FlyingFishEffect | undefined,
 				physicalSize.set(preset.physicalSize);
 				extraLongevity.set(preset.extraLongevity);
 			}),
-			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange, "Colour Pattern"),
+			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
 			...(usesSequence ? [createSequenceDropdownRowWithReverse(colours.sequenceName, colours.reverseSequence)] : []),
 			...colourRows
 		],

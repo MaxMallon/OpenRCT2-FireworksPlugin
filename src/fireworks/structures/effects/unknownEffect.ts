@@ -3,9 +3,12 @@ import { Effect, EffectType } from "../Effect";
 
 export class UnknownEffect extends Effect
 {
+	override readonly className: string;
+
 	constructor(public typeName: string, private rawData?: any)
 	{
 		super(EffectType.Unknown, {} as LoadColours);
+		this.className = this.typeName;
 	}
 
 	override toParkData(): any

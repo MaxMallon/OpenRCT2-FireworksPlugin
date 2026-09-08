@@ -1,8 +1,18 @@
 import { Colour, store } from "openrct2-flexui";
 import { SprayEffectFromGround } from "../../fireworks/structures/effects/burstEffects/sprayEffect";
-import { createColourPickerRow, createEffectSizePresetRow, createNumberRow, EffectSizePreset } from "./shared";
-import { openEffectWindow } from "./template";
+import { createColourPickerRow, createEffectSizePresetRow, createNumberRow, EffectSizePreset, ExplanationParagraph, openEffectWindow } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
+
+const explanation: ExplanationParagraph[] = [
+	{ text: "A burst of particles is shot from a point.", height: 40 },
+	{ term: "Amount", description: "Exact number of particles", height: 14 },
+	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
+	{ term: "Colour", description: "Colour of the particles", height: 14 },
+	{ term: "Tilt", description: "The angle in the vertical plane of where\nthe particles are shot towards.\n0 = up, 90 = horizontal, 180 = down", height: 36 },
+	{ term: "Azimuth", description: "The angle in the horizontal plane of where\nthe particles are shot towards.", height: 28 },
+	{ term: "Time Till Stall", description: "The number of ticks before the particles reach\ntheir max height. Affects life time of particles.", height: 28 },
+	{ term: "Vertical Spread", description: "How densely clustered the spray is\nlongitudinally.", height: 28 },
+];
 
 export function openSprayEffectWindow(effect: SprayEffectFromGround | undefined, onSave: (effect: Effect) => void, onClose?: () => void): void
 {
@@ -25,9 +35,10 @@ export function openSprayEffectWindow(effect: SprayEffectFromGround | undefined,
 	openEffectWindow({
 		title: "Spray Mine Effect",
 		width: 360,
-		height: 260,
+		height: 270,
 		saveText: effect ? "Update Effect" : "Add Effect",
 		onClose,
+		explanation,
 		content: [
 			createEffectSizePresetRow(sizePresets, preset => {
 				amount.set(preset.size);

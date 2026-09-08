@@ -1,6 +1,9 @@
 import { ValidationContext, ValidationIssue } from "../usageChecker";
+import { PersistentDataObject } from "./PersistentDataObject";
 
-export class Show {
+export class Show extends PersistentDataObject {
+	readonly className: string = "Show";
+
 	constructor(
 		public name: string,
 		public sequence: string = "",
@@ -11,30 +14,20 @@ export class Show {
 		public music: boolean = false,
 		public musicRideID: number = 0,
 		public launchTerrain: string | undefined = undefined,
+		public enabled: boolean = false,
 	) {
+		super();
 	}
 
-	toParkData(): any {
+	override toParkData(): any {
 		return {
-			className: "Show",
-			name: this.name,
-			sequence: this.sequence,
-			interruptWhenTooManyParticles: this.interruptWhenTooManyParticles,
-			anouncement1: this.anouncement1,
-			anouncement2: this.anouncement2,
-			trigger: this.trigger ? showTriggerToParkData(this.trigger) : undefined,
-			music: this.music,
-			musicRideID: this.musicRideID,
-			launchTerrain: this.launchTerrain
+			...super.toParkData(),
+			trigger: this.trigger ? showTriggerToParkData(this.trigger) : undefined
 		};
 	}
 
 	static fromParkData(show: any): Show {
-		// Support old saves that stored an array; migrate first element.
-		const legacyTriggers: ShowTrigger[] = (show?.triggers ?? []).map((t: any) => showTriggerFromParkData(t));
-		const trigger = show?.trigger
-			? showTriggerFromParkData(show.trigger)
-			: (legacyTriggers.length > 0 ? legacyTriggers[0] : undefined);
+		const trigger = show?.trigger ? showTriggerFromParkData(show.trigger) : undefined;
 		const launchTerrain = show?.launchTerrain ?? undefined;
 		return new Show(
 			String(show?.name ?? ""),
@@ -45,7 +38,8 @@ export class Show {
 			trigger,
 			show?.music ?? false,
 			show?.musicRideID ?? 0,
-			launchTerrain
+			launchTerrain,
+			show?.enabled ?? false
 		);
 	}
 
@@ -65,38 +59,18 @@ export class Show {
 }
 
 
-// ---------------------------------------------------------------------------
-// Show trigger types – define when a show should start.
-// ---------------------------------------------------------------------------
-
-/** Discriminant for each trigger variant. */
+// When a show triggers
 export enum ShowTriggerKind {
-	/** Fire on a real-world clock interval, e.g. every 15 real minutes. */
 	RealTimeInterval = "realTimeInterval",
-	/** Fire on a repeating in-game calendar pattern (daily / monthly / yearly). */
 	InGameRecurring = "inGameRecurring",
-	/** Fire on a set of specific in-game month+day pairs that repeat every year. */
 	InGameAnnualDates = "inGameAnnualDates"
 }
 
 /** Granularity for {@link InGameRecurringTrigger}. */
 export enum InGameRecurringPeriod {
-	/** Every in-game day. */
 	Daily = "daily",
-	/** A fixed day-of-month, every month. Requires `dayOfMonth`. */
-	Monthly = "monthly",
-	/** A fixed month+day, every year. Requires `dayOfMonth` and `month`. */
-	Yearly = "yearly"
-}
-
-/**
- * A month+day pair in the in-game calendar.
- * `month` follows the OpenRCT2 calendar: 0 = March … 7 = October.
- * `day` is 1-based.
- */
-export interface InGameDate {
-	month: number;
-	day: number;
+	Monthly = "monthly", //fixed day
+	Yearly = "yearly" //fixed month and day
 }
 
 /** Fire every `intervalMinutes` real-world minutes. */
@@ -105,13 +79,6 @@ export interface RealTimeIntervalTrigger {
 	intervalMinutes: number;
 }
 
-/**
- * Fire on a recurring in-game calendar pattern.
- *
- * - `period = Daily`   → triggers every in-game day.
- * - `period = Monthly` → triggers on `dayOfMonth` of every month.
- * - `period = Yearly`  → triggers on `month`/`dayOfMonth` every year.
- */
 export interface InGameRecurringTrigger {
 	kind: ShowTriggerKind.InGameRecurring;
 	period: InGameRecurringPeriod;
@@ -119,6 +86,11 @@ export interface InGameRecurringTrigger {
 	dayOfMonth?: number;
 	/** Month index (0-7). Required for `Yearly`. */
 	month?: number;
+}
+
+export interface InGameDate {
+	month: number;
+	day: number;
 }
 
 /**

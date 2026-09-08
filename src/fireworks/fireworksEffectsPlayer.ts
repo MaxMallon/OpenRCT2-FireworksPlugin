@@ -1,12 +1,13 @@
 import { Colour } from "openrct2-flexui";
-
-import { counterGravity1sec, resolveLaunchSitePosition } from "./helpers";
+import { counterGravity1sec } from "./helpers";
+import { cloneEffect, cloneShellBlueprint } from "./cloneHelpers";
+import { resolveLaunchSitePosition } from "./persistent";
 import { IncrementDelayedShotsCount, IncrementLaunchedShotsCount, IncrementSkippedShotsCount, SpawnLight, SpawnLightCluster } from "./particleSpawner";
-import { LoadColours, ShellColours } from "./structures/ColourStructures";
 import * as persistent from "./persistent";
 import { TrailEffect } from "./structures/effects/EmitterEffects/trailEffect";
-import type { PlaybackState, SerializedPlayerState } from "./parkStorage";
-import { EmitterEffect, Effect } from "./structures/Effect";
+import type { PlaybackState, SerializedPlayerState, SerializedExplosion } from "./parkStorage";
+import { decodeEffect } from "./parkStorage";
+import { EmitterEffect } from "./structures/Effect";
 import { Shell, GroundEffect, ShellFactorySource, ShotHeadType, setShellLauncher, setGroundEffectLauncher } from "./structures/Firework";
 import { SequenceEntry, Sequence, SequenceItemType } from "./structures/Sequence";
 import { ShellLoad } from "./structures/ShellLoad";
@@ -16,7 +17,7 @@ import { Load } from "./structures/Load";
 
 let FireworksToExplode: ShellLoad[] = []; //fireworks in air, counting down to explode
 let FireworksToEmit: EmitterEffect[] = []; //fireworks emitting constant effects
-let activePlayers: FireworksPlayer[] = [];
+let activePlayers: FireworksPlayer[] = []; //players playing stuff
 
 
 class FireworksPlayer {
@@ -55,7 +56,7 @@ class FireworksPlayer {
 		this.fireworksToBeShot.sort((a, b) => a.cumulativeTimeTillLight - b.cumulativeTimeTillLight);
 	}
 
-	tickShots(): void {
+	playerTick(): void {
 		while (this.fireworksToBeShot.length > 0 && persistent.effectTick >= this.fireworksToBeShot[0].cumulativeTimeTillLight + this.tickOffset) {
 			const scheduledEntry = this.fireworksToBeShot.shift()!;
 
@@ -65,11 +66,9 @@ class FireworksPlayer {
 			if (scheduledEntry.itemType === SequenceItemType.Sequence) {
 				const seq = scheduledEntry.runtimeItem instanceof Sequence
 					? scheduledEntry.runtimeItem as Sequence
-					: persistent.sequenceMap.get(scheduledEntry.itemName.trim());
+					: resolveSequenceFresh(scheduledEntry.itemName);
 				if (seq) {
-					const child = new FireworksPlayer();
-					child.loadSequenceItems(seq, scheduledEntry.cumulativeTimeTillLight + this.tickOffset);
-					activePlayers.push(child);
+					AddFireworksPlayer(seq, scheduledEntry.cumulativeTimeTillLight + this.tickOffset);
 				}
 				continue;
 			}
@@ -81,7 +80,7 @@ class FireworksPlayer {
 				success = lightGroundEffect(scheduledEntry.runtimeItem as GroundEffect);
 			} else if (scheduledEntry.itemType === SequenceItemType.Shell) {
 				const shell = persistent.shellMap.get(scheduledEntry.itemName.trim());
-				if (shell) success = lightShell(cloneShell(shell));
+				if (shell) success = lightShell(cloneShellBlueprint(shell));
 			} else if (scheduledEntry.itemType === SequenceItemType.GroundEffect) {
 				const ge = persistent.groundEffectMap.get(scheduledEntry.itemName.trim());
 				if (ge) success = lightGroundEffect(ge);
@@ -109,72 +108,27 @@ function normalizeFrame(value: number): number {
 	return Math.max(0, Math.floor(value));
 }
 
-function cloneCoords(coords: CoordsXYZ): CoordsXYZ {
-	return { x: coords.x, y: coords.y, z: coords.z };
+/**
+ * Looks up a persisted sequence by name and recalculates its cumulative times from
+ * each entry's relative timeTillLight (recursing through any nested sequences).
+ * A sequence's stored cumulativeTimeTillLight values are only correct if it was the
+ * one most recently recalculated/edited; once nested inside another sequence they can
+ * go stale (e.g. a nextItemAfterEnd gap computed against an outdated nested duration).
+ * Always resolving fresh here keeps deeply nested sequences correct regardless of depth.
+ */
+function resolveSequenceFresh(name: string): Sequence | undefined {
+	const seq = persistent.sequenceMap.get(name.trim());
+	if (!seq) return undefined;
+
+	const clone = new Sequence(seq.name, seq.items.map(e => new SequenceEntry(
+		e.itemName, e.itemType, e.timeTillLight, e.cumulativeTimeTillLight, e.nextItemAfterEnd
+	)));
+	clone.recalculateCumulativeTimes(0, resolveSequenceFresh);
+	return clone;
 }
-
-function cloneLoadColours(colours: LoadColours): LoadColours {
-	if (!colours || typeof (colours as unknown) !== 'object') {
-		return colours;
-	}
-	return new LoadColours(
-		[...colours.colourList],
-		colours.sequenceName,
-		colours.reverseSequence,
-		colours.pattern,
-		{ ...colours.namedColours }
-	);
-}
-
-function cloneEffect(effect: Effect): Effect {
-	const clonedEffect = Object.create(Object.getPrototypeOf(effect)) as Effect;
-	for (const key in effect) {
-		if (Object.prototype.hasOwnProperty.call(effect, key)) {
-			(clonedEffect as unknown as { [key: string]: unknown })[key] = (effect as unknown as { [key: string]: unknown })[key];
-		}
-	}
-
-	clonedEffect.colours = cloneLoadColours(effect.colours);
-	return clonedEffect;
-}
-
-function cloneLoad(load: Load): Load {
-	return new Load(load.effects.map(cloneEffect));
-}
-
-function cloneShellLoad(load: ShellLoad): ShellLoad {
-	return new ShellLoad(load.loadName, load.timeTillExplode, load.particle, load.runtimeLoad ? cloneLoad(load.runtimeLoad) : undefined);
-}
-
-function cloneShellColours(colours: ShellColours): ShellColours {
-	return new ShellColours(colours.headColour, colours.trail1Colour, colours.trail2Colour);
-}
-
-function cloneShell(shell: Shell): Shell {
-	const position = typeof shell.position === "string" ? shell.position : cloneCoords(shell.position);
-
-	return new Shell(
-		shell.name,
-		cloneShellLoad(shell.load),
-		shell.ascendEffects.map(cloneShellLoad),
-		shell.headType,
-		shell.trail,
-		shell.trailDensity,
-		shell.trailWidth,
-		position,
-		cloneShellColours(shell.shellColours),
-		shell.timeTillStall,
-		cloneCoords(shell.velocity),
-		shell.delay,
-		shell.azimuth,
-		shell.tilt,
-		shell.factorySource,
-	);
-}
-
 
 // ==================== Sequence flattening utilities ====================
-// Kept for displaying a flattened shot list.
+// Only for displaying a flattened shot list.
 
 export function collectShotsInRange(sequence: Sequence, startTime: number, endTime: number, collected: SequenceEntry[], offset: number = 0): void {
 	for (let index = 0; index < sequence.items.length; index++) {
@@ -182,7 +136,7 @@ export function collectShotsInRange(sequence: Sequence, startTime: number, endTi
 		const absoluteTime = normalizeFrame(entry.cumulativeTimeTillLight) + offset;
 
 		if (entry.itemType === SequenceItemType.Sequence) {
-			const nested = persistent.sequenceMap.get(entry.itemName.trim());
+			const nested = resolveSequenceFresh(entry.itemName);
 			if (nested) {
 				collectShotsInRange(nested, startTime, endTime, collected, absoluteTime);
 			}
@@ -204,7 +158,7 @@ export function flattenScheduledEntryToShots(entry: SequenceEntry, cumulativeOve
 		return [new SequenceEntry(entry.itemName, entry.itemType, 0, absoluteCumulativeTime, entry.nextItemAfterEnd, entry.runtimeItem)];
 	}
 
-	const sequence = persistent.sequenceMap.get(entry.itemName.trim());
+	const sequence = resolveSequenceFresh(entry.itemName);
 	if (!sequence) return [];
 
 	const sequenceOffset = absoluteCumulativeTime;
@@ -245,21 +199,11 @@ export function AddFireworkToEmit(effect: EmitterEffect): void
 
 export function AddAnchoredEmitterToEmit(effect: EmitterEffect, posOri: CoordsXYZ, velocity: CoordsXYZ): void
 {
-	// If the effect has a named launch site, let MakeContinousFireworks resolve the
-	// position live each tick so entity-based sites track movement.
-	if (typeof effect.position === "string" && effect.position.trim())
+	if (!(typeof effect.position === "string" && effect.position.trim()))
 	{
-		FireworksToEmit.push(effect);
-		return;
+		effect.position    = { x: posOri.x,   y: posOri.y,   z: posOri.z   };
+		effect.baseVelocity = { x: velocity.x, y: velocity.y, z: velocity.z }; //Pretty sure this is not needed anymore
 	}
-
-	const anchoredPos = { x: posOri.x, y: posOri.y, z: posOri.z };
-	const anchoredVelocity = { x: velocity.x, y: velocity.y, z: velocity.z };
-	const originalMake = effect.Make.bind(effect) as (_posOri: CoordsXYZ, _velocity: CoordsXYZ) => Effect | undefined;
-	effect.Make = function(_posOri: CoordsXYZ, _velocity: CoordsXYZ): EmitterEffect | undefined {
-		originalMake(anchoredPos, anchoredVelocity);
-		return undefined;
-	};
 	FireworksToEmit.push(effect);
 }
 
@@ -283,6 +227,28 @@ export function LoadFireworks(fireworks: Sequence | Shell, _startTime: number = 
 	}
 
 	activePlayers = [player];
+}
+
+/** Adds a sequence player to the pool without discarding existing players (for concurrent shows). */
+export function AddFireworksPlayer(sequence: Sequence, offset: number = 0): void {
+	const player = new FireworksPlayer();
+	player.loadSequenceItems(sequence, offset);
+	activePlayers.push(player);
+}
+
+/** Clears in-flight effects and player queues without stopping the loop subscription. */
+export function ClearFireworksEffects(): void {
+	activePlayers = [];
+	FireworksToExplode = [];
+	FireworksToEmit = [];
+}
+
+/**
+ * True while any scheduled shots, in-flight shells, or continuous emitters are still live.
+ * Untracked particles not counted, fixed margin in the caller covers the tail.
+ */
+export function isFireworksActivityInProgress(): boolean {
+	return activePlayers.length > 0 || FireworksToExplode.length > 0 || FireworksToEmit.length > 0;
 }
 
 export function AddFireworksToBeShot(fireworks: Sequence | Shell, startTime: number = 0, endTime: number = Number.MAX_VALUE) {
@@ -326,6 +292,22 @@ export function getPlayersSnapshot(): SerializedPlayerState[] {
 	}));
 }
 
+/** Snapshot of active continuous emitters. */
+export function getEmittersSnapshot(): any[] {
+	return FireworksToEmit
+		.map(e => e.toParkData());
+}
+
+/** Snapshot of shells already in-flight (particle entity IDs survive a park save). */
+export function getExplosionsSnapshot(): SerializedExplosion[] {
+	const result: SerializedExplosion[] = [];
+	for (const sl of FireworksToExplode) {
+		if (sl.particle == null) continue;
+		result.push({ loadName: sl.loadName, timeTillExplode: sl.timeTillExplode, particleId: sl.particle.id ?? -1 });
+	}
+	return result;
+}
+
 /**
  * Rebuilds active players from a saved playback state and (re-)starts the loop
  * subscription. Called from loadParkState() when restoring a running show.
@@ -340,22 +322,40 @@ export function restorePlayersFromSnapshot(playback: PlaybackState): void {
 		loopSubscription = undefined;
 	}
 
-	if (!playback.fireworkEffectsActive || !playback.players || playback.players.length === 0) {
-		return;
-	}
-
-	for (const playerData of playback.players) {
-		const player = new FireworksPlayer();
-		player.fireworksToBeShot.length = 0;
-		for (const entryData of playerData.fireworksToBeShot ?? []) {
-			player.fireworksToBeShot.push(SequenceEntry.fromParkData(entryData));
-		}
-		if (player.fireworksToBeShot.length > 0) {
-			activePlayers.push(player);
+	if (playback.fireworkEffectsActive && playback.players && playback.players.length > 0) {
+		for (const playerData of playback.players) {
+			const player = new FireworksPlayer();
+			player.fireworksToBeShot.length = 0;
+			for (const entryData of playerData.fireworksToBeShot ?? []) {
+				player.fireworksToBeShot.push(SequenceEntry.fromParkData(entryData));
+			}
+			if (player.fireworksToBeShot.length > 0) {
+				activePlayers.push(player);
+			}
 		}
 	}
 
-	if (activePlayers.length > 0) {
+	if (typeof map !== "undefined") {
+		for (const e of playback.pendingExplosions ?? []) {
+			const entity = map.getEntity(e.particleId);
+			if (!entity || e.particleId < 0) continue;
+			FireworksToExplode.push(new ShellLoad(e.loadName, e.timeTillExplode, entity as CrashedVehicleParticle));
+		}
+	}
+
+	for (const emitterData of playback.pendingEmitters ?? []) {
+		const effect = decodeEffect(emitterData);
+		if (effect instanceof EmitterEffect) {
+			// Re-link game-entity particles saved by ID (Tourbillion, SingularFish, etc.)
+			if (typeof map !== "undefined" && typeof emitterData.particleId === "number" && emitterData.particleId >= 0) {
+				const p = map.getEntity(emitterData.particleId);
+				if (p) (effect as any).particle = p;
+			}
+			FireworksToEmit.push(effect);
+		}
+	}
+
+	if (activePlayers.length > 0 || FireworksToExplode.length > 0 || FireworksToEmit.length > 0) {
 		loopSubscription = context.subscribe("interval.tick", FireWorksLoop);
 	}
 }
@@ -398,7 +398,16 @@ function lightShell(shell: Shell): boolean {
 
 	for (let i = 0; i < shell.ascendEffects.length; i++) {
 		const ascend = shell.ascendEffects[i];
-		const ascendTime = ascend.timeTillExplode === ShellLoad.explodeAtEnd ? particle.timeToLive - 1 : ascend.timeTillExplode;
+		let ascendTime = ascend.timeTillExplode;
+		if (ascendTime === ShellLoad.explodeAtEnd) {
+			ascendTime = particle.timeToLive - 1;
+		}
+		else if (shell.randomness > 0) {
+			// Scale explicit ascend-load delays by the same height factor rolled for the
+			// launch, clamped so they still fire before the shell's own burst.
+			const factor = shell.lastHeightRandomnessFactor || 1;
+			ascendTime = Math.min(Math.max(0, Math.round(ascendTime * factor)), Math.max(0, particle.timeToLive - 1));
+		}
 		AddFireworkToExplode(new ShellLoad(ascend.loadName, ascendTime, particle, ascend.runtimeLoad));
 	}
 	AddFireworkToExplode(new ShellLoad(shell.load.loadName, particle.timeToLive - 1, particle, shell.load.runtimeLoad));
@@ -423,7 +432,8 @@ export function MakeContinousFireworks(): void {
 	for (let i = 0; i < FireworksToEmit.length; i++) {
 		const firework = FireworksToEmit[i];
 		const pos = resolveLaunchSitePosition(firework.position);
-		firework.Make(pos ? pos : { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: counterGravity1sec });
+		const vel = firework.baseVelocity ?? { x: 0, y: 0, z: counterGravity1sec };
+		firework.Make(pos ? pos : { x: 0, y: 0, z: 0 }, vel);
 		if (firework.timeLeft <= 0) {
 			FireworksToEmit.splice(i, 1);
 			i--;
@@ -435,12 +445,9 @@ export function RunShowOrSequence(): void {
 	if (!persistent.fireworkEffectsActive) return;
 	const count = activePlayers.length;
 	for (let i = 0; i < count; i++) {
-		activePlayers[i].tickShots();
+		activePlayers[i].playerTick();
 	}
 	persistent.incrementEffectTick();
-	if (activePlayers.length === 0 && FireworksToExplode.length === 0 && FireworksToEmit.length === 0) {
-		FireworksReset();
-	}
 }
 
 //Main loop that makes fireworks work
@@ -452,7 +459,7 @@ export function FireWorksLoop(): void {
 		// Snapshot count so child players spawned this tick start next frame.
 		const playerCount = activePlayers.length;
 		for (let i = 0; i < playerCount; i++) {
-			activePlayers[i].tickShots();
+			activePlayers[i].playerTick();
 		}
 		// Remove players that have fired all their shots.
 		for (let i = playerCount - 1; i >= 0; i--) {
@@ -464,15 +471,7 @@ export function FireWorksLoop(): void {
 
 	persistent.incrementEffectTick();
 
-	if (activePlayers.length === 0 && FireworksToExplode.length === 0 && FireworksToEmit.length === 0) {
-		FireworksReset();
-	}
 }
-
-let FireworksReset = function (): void {
-	/*FireworksToBeShot = FireWorksSequence.slice();
-	fireworkTicks = -40 * 120;*/
-};
 
 setShellLauncher(lightShell);
 
@@ -493,4 +492,6 @@ setGroundEffectLauncher(lightGroundEffect);
  */
 export function initPlayerCallbacks(): void {
 	persistent.registerPlayerCallbacks(getPlayersSnapshot, restorePlayersFromSnapshot);
+	persistent.registerExplosionsCallback(getExplosionsSnapshot);
+	persistent.registerEmittersCallback(getEmittersSnapshot);
 }

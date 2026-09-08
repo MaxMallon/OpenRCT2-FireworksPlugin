@@ -1,8 +1,25 @@
 import { store } from "openrct2-flexui";
 import { StarEffect } from "../../fireworks/structures/effects/burstEffects/starEffect";
-import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, normalizePatternSelection } from "./shared";
-import { openEffectWindow } from "./template";
+import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, ExplanationParagraph, normalizePatternSelection, openEffectWindow } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
+
+const explanation: ExplanationParagraph[] = [
+	{ text: "A symmetrical star with spikes of particles coming from a middle point.\n", height: 40 },
+	{ term: "Density", description: "Affects number of particles", height: 14 },
+	{ term: "Size", description: "Physical size of effect, affects duration\nof the effect", height: 28 },
+	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
+	{ term: "Spike Length", description: "Number of particles per spike", height: 14 },
+	{ term: "Colour pattern", description: "Determines the sequence and arrangement\nof colours", height: 28 },
+	{ term: "   one-pair", description: "Star made of a single type of particle", height: 14 },
+	{ term: "   2-halves", description: "Two halve stars of different colours", height: 14 },
+	{ term: "   2-mixed", description: "Two colours mixed randomly", height: 14 },
+	{ term: "   3-mixed", description: "Three colours mixed randomly", height: 14 },
+	{ term: "   random", description: "Using a colour sequence in random order", height: 14 },
+	{ term: "   2-layer-gumball", description: "A star with an innard of one colour\nand an outer layer of another colour", height: 28 },
+	{ term: "   3-layer-gumball", description: "A star with three inside-outside\nlayers of colours, like a gumball", height: 28 },
+	{ term: "   colour-sequence-gumball", description: "A star with colours arranged in a gumball\npattern according to the sequence", height: 28 },
+	{ term: "   colour-sequence-layered", description: "A star with colours arranged in layers\n according to the sequence", height: 28 },
+];
 
 export function openStarEffectWindow(effect: StarEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
@@ -48,8 +65,9 @@ export function openStarEffectWindow(effect: StarEffect | undefined, onSave: (ef
 	handle = openEffectWindow({
 		title: "Star Effect",
 		width: 320,
-		height: 600,
+		height: 610,
 		saveText: isEditing ? "Update Effect" : "Add Effect",
+		explanation,
 		onClose: () => {
 			if (isReopening) {
 				isReopening = false;
@@ -71,7 +89,7 @@ export function openStarEffectWindow(effect: StarEffect | undefined, onSave: (ef
 					spikeLength.set(preset.spikeLength);
 				}
 			}),
-			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange, "Colour Pattern"),
+			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
 			...(usesSequence ? [createSequenceDropdownRowWithReverse(colours.sequenceName, colours.reverseSequence)] : []),
 			...colourRows
 		],

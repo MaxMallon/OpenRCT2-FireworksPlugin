@@ -1,27 +1,39 @@
-import { button, colourPicker, compute, flexible, groupbox, label, LayoutDirection, listview, spinner, store, textbox, Colour, window } from "openrct2-flexui";
+import { colourPicker, compute, flexible, groupbox, label, LayoutDirection, listview, store, textbox, Colour } from "openrct2-flexui";
 import type { OpenWindow } from "openrct2-flexui";
+import { numberInputSpinner } from "../numberInputSpinner";
 import { ColourSequence, maxColourSequenceLength } from "../../fireworks/structures/ColourStructures";
-import { colourSequences, setColourSequences, resetPersistentStateToDefaults, saveParkState } from "../../fireworks/persistent";
+import { colourSequences, setColourSequences, resetPersistentStateToDefaults } from "../../fireworks/persistent";
 import { findColourSequenceUsages, removeColourSequenceUsages } from "../../fireworks/usageChecker";
 import { openUsageWarningWindow } from "../usageWarningWindow";
 import { getMainWindowPosition } from "../windowState";
-import { openExportWindow, openImportWindow } from "../importExportWindow";
+import { openPopupWindow } from "../popupWindows";
+import { openExportWindow, openImportWindow, DATA_WINDOW_GROUP } from "../importExportWindow";
 import { openTutorialWindow } from "../tutorialWindow";
+import { colouredButton } from "../ColouredButton";
+import { SerializedColourSequenceEditorState } from "../../fireworks/parkStorage";
+import { confirmDiscardChanges } from "../discardChangesWindow";
 
-const selectedColourSequenceIndex = store<number | undefined>(undefined);
-const colourSequenceName = store("");
-const colourSequenceLength = store(1);
+const DEFAULT_COLOUR_SEQUENCE_EDITOR = {
+	name: "",
+	length: 1,
+	colour: Colour.Invisible,
+	selectedIndex: undefined as number | undefined
+};
+
+const selectedColourSequenceIndex = store<number | undefined>(DEFAULT_COLOUR_SEQUENCE_EDITOR.selectedIndex);
+const colourSequenceName = store(DEFAULT_COLOUR_SEQUENCE_EDITOR.name);
+const colourSequenceLength = store(DEFAULT_COLOUR_SEQUENCE_EDITOR.length);
 const colourSequenceColourStores = [
-	store(Colour.Invisible),
-	store(Colour.Invisible),
-	store(Colour.Invisible),
-	store(Colour.Invisible),
-	store(Colour.Invisible),
-	store(Colour.Invisible),
-	store(Colour.Invisible),
-	store(Colour.Invisible),
-	store(Colour.Invisible),
-	store(Colour.Invisible)
+	store(DEFAULT_COLOUR_SEQUENCE_EDITOR.colour),
+	store(DEFAULT_COLOUR_SEQUENCE_EDITOR.colour),
+	store(DEFAULT_COLOUR_SEQUENCE_EDITOR.colour),
+	store(DEFAULT_COLOUR_SEQUENCE_EDITOR.colour),
+	store(DEFAULT_COLOUR_SEQUENCE_EDITOR.colour),
+	store(DEFAULT_COLOUR_SEQUENCE_EDITOR.colour),
+	store(DEFAULT_COLOUR_SEQUENCE_EDITOR.colour),
+	store(DEFAULT_COLOUR_SEQUENCE_EDITOR.colour),
+	store(DEFAULT_COLOUR_SEQUENCE_EDITOR.colour),
+	store(DEFAULT_COLOUR_SEQUENCE_EDITOR.colour)
 ];
 
 function getFallbackColourSequenceName(): string
@@ -29,14 +41,67 @@ function getFallbackColourSequenceName(): string
 	return `Sequence ${colourSequences.get().length + 1}`;
 }
 
-function resetColourSequenceEditor()
+export function getColourSequenceEditorState(): SerializedColourSequenceEditorState {
+	return {
+		colourSequence: new ColourSequence(
+			colourSequenceName.get(),
+			colourSequenceColourStores.slice(0, colourSequenceLength.get()).map(s => s.get())
+		).toParkData()
+	};
+}
+
+export function restoreColourSequenceEditorState(state?: SerializedColourSequenceEditorState): void {
+	if (!state || !state.colourSequence) {
+		resetColourSequenceEditor();
+		return;
+	}
+	const sequence = ColourSequence.fromParkData(state.colourSequence);
+	selectedColourSequenceIndex.set(DEFAULT_COLOUR_SEQUENCE_EDITOR.selectedIndex);
+	colourSequenceName.set(sequence.name);
+	const len = Math.max(1, Math.min(maxColourSequenceLength, sequence.colours.length > 0 ? sequence.colours.length : DEFAULT_COLOUR_SEQUENCE_EDITOR.length));
+	colourSequenceLength.set(len);
+	for (let i = 0; i < maxColourSequenceLength; i++) {
+		colourSequenceColourStores[i].set(typeof sequence.colours[i] === "number" ? sequence.colours[i] : DEFAULT_COLOUR_SEQUENCE_EDITOR.colour);
+	}
+}
+
+export function resetColourSequenceEditor()
 {
-	colourSequenceName.set("");
-	colourSequenceLength.set(1);
+	selectedColourSequenceIndex.set(DEFAULT_COLOUR_SEQUENCE_EDITOR.selectedIndex);
+	colourSequenceName.set(DEFAULT_COLOUR_SEQUENCE_EDITOR.name);
+	colourSequenceLength.set(DEFAULT_COLOUR_SEQUENCE_EDITOR.length);
 	for (const colourStore of colourSequenceColourStores)
 	{
-		colourStore.set(Colour.Invisible);
+		colourStore.set(DEFAULT_COLOUR_SEQUENCE_EDITOR.colour);
 	}
+}
+
+export function isColourSequenceEditorDirty(): boolean {
+	const currentName = colourSequenceName.get().trim();
+	const currentLength = colourSequenceLength.get();
+	const currentColours = colourSequenceColourStores.slice(0, currentLength).map(s => s.get());
+
+	if (!currentName) {
+		if (currentLength !== DEFAULT_COLOUR_SEQUENCE_EDITOR.length) return true;
+		return colourSequenceColourStores.some(s => s.get() !== DEFAULT_COLOUR_SEQUENCE_EDITOR.colour);
+	}
+
+	const saved = colourSequences.get().find(s => s.name === currentName);
+	if (!saved) {
+		return true;
+	}
+
+	if (saved.colours.length !== currentLength) {
+		return true;
+	}
+
+	for (let i = 0; i < currentLength; i++) {
+		if (saved.colours[i] !== currentColours[i]) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 function loadColourSequence(index: number)
@@ -166,7 +231,7 @@ function openDeleteAllDataConfirmWindow(onConfirm: () => void): void
 		? { x: mainPos.x + 40, y: mainPos.y + 40 }
 		: "center" as const;
 
-	const popup = window({
+	handle = openPopupWindow("config-delete-all-data", {
 		title: "Delete All Data",
 		width: 300,
 		height: 100,
@@ -180,27 +245,31 @@ function openDeleteAllDataConfirmWindow(onConfirm: () => void): void
 			flexible({
 				direction: LayoutDirection.Horizontal,
 				content: [
-					button({
-						text: "Yes",
+					label({ text: "", width: "1w" }),
+					colouredButton({
+						text: "Cancel",
 						width: 80,
 						height: 22,
+						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
+						onClick: () => handle?.close()
+					}),
+					label({ text: "", width: "1w" }),
+					colouredButton({
+						text: "{RED}Yes",
+						width: 80,
+						height: 22,
+						colour: Colour.Black, colourDark: Colour.Void, colourLight: Colour.Grey,
 						onClick: () => {
 							handle?.close();
 							onConfirm();
 						}
 					}),
-					button({
-						text: "Cancel",
-						width: 80,
-						height: 22,
-						onClick: () => handle?.close()
-					})
+					label({ text: "", width: "1w" }),
+
 				]
 			})
 		]
-	});
-
-	handle = popup.open();
+	}, DATA_WINDOW_GROUP);
 }
 
 export function createConfigTab()
@@ -230,19 +299,30 @@ export function createConfigTab()
 									height: 120,
 									canSelect: true,
 									selectedCell: compute(selectedColourSequenceIndex, index => index === undefined ? null : { row: index, column: 0 }),
-									onClick: row => loadColourSequence(row)
+									onClick: row => confirmDiscardChanges(isColourSequenceEditorDirty, () => loadColourSequence(row))
 								}),
 								flexible({
 									direction: LayoutDirection.Horizontal,
 									content: [
-										button({
-											text: "Add / Update",
+										colouredButton({
+											text: "{WHITE}Add / Update",
 											width: 80,
+											height: 30,
+											colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
 											onClick: addOrUpdateColourSequence
 										}),
-										button({
-											text: "Delete",
+										colouredButton({
+											text: "{WHITE}New",
 											width: 80,
+											height: 30,
+											colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
+											onClick: () => confirmDiscardChanges(isColourSequenceEditorDirty, resetColourSequenceEditor)
+										}),
+										colouredButton({
+											text: "{WHITE}Delete",
+											width: 80,
+											height: 30,
+											colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
 											onClick: deleteSelectedColourSequence
 										})
 									]
@@ -259,9 +339,10 @@ export function createConfigTab()
 								flexible({
 									direction: LayoutDirection.Horizontal,
 									content: [
-										label({ text: "Colours", width: 70 }),
-										spinner({
-											value: colourSequenceLength,
+										numberInputSpinner({
+											labelText: "Colours",
+											labelWidth: 70,
+											valueStore: colourSequenceLength,
 											onChange: value => {
 												colourSequenceLength.set(value);
 											},
@@ -286,22 +367,33 @@ export function createConfigTab()
 					width: "1w",
 					height: 290,
 					content: [
-						button({
-							text: "{RED}Delete all data",
+						colouredButton({
+							width: 290,
+							height: 65,
+							colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
+							text: "{WHITE}Delete all data",
 							onClick: () => openDeleteAllDataConfirmWindow(() => {
 								resetPersistentStateToDefaults();
-								saveParkState();
 							})
 						}),
-						button({
+						colouredButton({
+							width: 290,
+							height: 65,
+							colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 							text: "Export Data",
 							onClick: openExportWindow
 						}),
-						button({
+						colouredButton({
+							width: 290,
+							height: 65,
+							colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 							text: "Import Data",
 							onClick: openImportWindow
 						}),
-						button({
+						colouredButton({
+							width: 290,
+							height: 65,
+							colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 							text: "Open Tutorial",
 							onClick: openTutorialWindow
 						})

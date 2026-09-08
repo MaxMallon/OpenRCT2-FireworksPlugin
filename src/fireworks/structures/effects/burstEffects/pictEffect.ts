@@ -1,14 +1,14 @@
 import { LoadColours } from "../../ColourStructures";
 import { BurstEffect, EffectType, Effect } from "../../Effect";
-
+//Not doable (well) until rct particle behaviour uses proper math
 export class PictEffect extends BurstEffect
 {
+	override readonly className: string = "PictEffect";
+
 	constructor(size: number, physicalSize: number, extraLongevity: number, colours: LoadColours)
 	{
 		super(EffectType.Pict, size, physicalSize, extraLongevity, colours);
 	}
-
-	override toParkData(): any { return { ...super.toParkData(), className: "PictEffect" }; }
 
 	static fromParkData(effect: any): PictEffect
 	{

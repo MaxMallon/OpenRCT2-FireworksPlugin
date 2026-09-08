@@ -8,15 +8,21 @@ import { CrackleEffect } from "../EmitterEffects/crackleEffect";
 import { SprayEffectFromAir } from "./sprayEffect";
 import { GetColouredEffectSprite, sprite } from "../../../../img/images";
 
+//This file contains both palm and spray-burst effect for legacy code reasons
 export class PalmEffect extends BurstEffect {
+	override readonly className: string = "PalmEffect";
+
 	constructor(size: number, physicalSize: number, extraLongevity: number, colours: LoadColours, public crackle: boolean, public bigHead: boolean = true, public trailDensity: number = 0.5, public trailWidth: number = 3) {
 		super(EffectType.Palm, size, physicalSize, extraLongevity, colours);
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "PalmEffect" }; }
-
 	static fromParkData(effect: any): PalmEffect {
 		return new PalmEffect(effect?.size ?? 0, effect?.physicalSize ?? 0, effect?.extraLongevity ?? 0, LoadColours.fromParkData(effect?.colours), effect?.crackle ?? false, effect?.bigHead ?? true, effect?.trailDensity ?? 0.5, effect?.trailWidth ?? 3);
+	}
+
+	override getDuration(): number {
+		// Spawns comet-like shots that live extraLongevity + ~120, plus a small crackle tail.
+		return this.extraLongevity + 150;
 	}
 
 	override Make(posOri: CoordsXYZ, velocity: CoordsXYZ): BurstEffect | undefined {
@@ -131,13 +137,12 @@ export class PalmEffect extends BurstEffect {
 }
 
 export class SprayBurstEffect extends PalmEffect {	
+	override readonly className: string = "SprayBurstEffect";
 
 	constructor(size: number, physicalSize: number, extraLongevity: number, colours: LoadColours) {
 		super(size, physicalSize, extraLongevity, colours, false, false, 0, 0);
 		this.type = EffectType.SprayBurst;
 	}
-
-	override toParkData(): any { return { ...super.toParkData(), className: "SprayBurstEffect" }; }
 
 	static override fromParkData(effect: any): SprayBurstEffect {
 		return new SprayBurstEffect(effect?.size ?? 0, effect?.physicalSize ?? 0, effect?.extraLongevity ?? 0, LoadColours.fromParkData(effect?.colours));

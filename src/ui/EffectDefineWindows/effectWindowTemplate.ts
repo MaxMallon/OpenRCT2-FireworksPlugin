@@ -1,7 +1,156 @@
-import { button, Colour, colourPicker, compute, dropdown, flexible, label, LayoutDirection, spinner, store, textbox } from "openrct2-flexui";
+import { colourPicker, compute, dropdown, flexible, store, textbox , horizontal, label, LayoutDirection, type FlexibleLayoutContainer, type OpenWindow, window, Colour } from "openrct2-flexui";
+import { getMainWindowPosition } from "../windowState";
+import { makePopupGroupSwitchable, openPopupCustom, openPopupWindow } from "../popupWindows";
+import { colouredButton } from "../ColouredButton";
+import { numberInputSpinner } from "../numberInputSpinner";
 import { LoadColours } from "../../fireworks/structures/ColourStructures";
+import { cloneLoadColours } from "../../fireworks/cloneHelpers";
 import { colourSequences } from "../../fireworks/persistent";
 
+/** Popup group shared by all effect definition windows: only one may be open at a time. */
+export const EFFECT_WINDOW_GROUP = "effect-window";
+/** Popup group shared by sub-selection windows opened from inside an effect window. */
+export const EFFECT_SUB_WINDOW_GROUP = "effect-sub-window";
+/** Popup group for the effect info popup: opening a new one replaces the previously open one. */
+export const EFFECT_EXPLANATION_GROUP = "effect-explanation-window";
+makePopupGroupSwitchable(EFFECT_EXPLANATION_GROUP);
+
+/** A single paragraph of explanation text, paired with the label height needed to fit it. */
+export interface ExplanationParagraph
+{
+	/** Full-width paragraph text. Omit when using `term`/`description` instead. */
+	text?: string;
+	height: number;
+	/** When set alongside `description`, rendered as an indented "term: description" row. */
+	term?: string;
+	description?: string;
+}
+
+const defaultExplanation: ExplanationParagraph[] = [
+	{ text: "No additional information is available for this effect yet.", height: 26 }
+];
+
+/** Opens (or replaces) the small context-aware info popup describing the current effect. */
+export function openEffectExplanationWindow(title: string, paragraphs: ExplanationParagraph[]): void
+{
+	const mainPos = getMainWindowPosition();
+	const position = mainPos ? { x: mainPos.x + 40, y: mainPos.y + 40 } : "center" as const;
+	let handle: OpenWindow | undefined;
+
+	handle = openPopupWindow(`effect-explanation-${title}`, {
+		title: `${title} Info`,
+		width: 460,
+		height: "auto",
+		padding: 8,
+		position,
+		direction: LayoutDirection.Vertical,
+		content: [
+			...paragraphs.map(paragraph => paragraph.term !== undefined
+				? flexible({
+					direction: LayoutDirection.Horizontal,
+					height: paragraph.height,
+					content: [
+						label({ text: "", width: 10 }),
+						label({ text: paragraph.term, width: 180, height: paragraph.height }),
+						label({ text: paragraph.description ?? "", width: "1w", height: paragraph.height })
+					]
+				})
+				: label({ text: paragraph.text ?? "", height: paragraph.height, width: "1w" })
+			),
+			horizontal({
+				height: 22,
+				content: [
+					label({ text: "", width: "1w", height: 8 }),
+					colouredButton({
+						text: "Close",
+						width: 70,
+						height: 22,
+						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
+						onClick: () => handle?.close()
+					}),
+					label({ text: "", width: "1w", height: 8 }),
+				]
+			})
+		]
+	}, EFFECT_EXPLANATION_GROUP);
+}
+
+export interface EffectWindowTemplateOptions
+{
+	title: string;
+	width: number;
+	height: number;
+	content: FlexibleLayoutContainer;
+	saveText: string;
+	onSave: () => void;
+	onClose?: () => void;	
+	popupKey?: string;
+	explanation?: ExplanationParagraph[];//For help window
+}
+
+export function openEffectWindow(options: EffectWindowTemplateOptions): OpenWindow | undefined
+{
+	const mainPos = getMainWindowPosition();
+	const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
+	let handle: OpenWindow | undefined;
+
+	return openPopupCustom(options.popupKey ?? EFFECT_WINDOW_GROUP, onClose =>
+	{
+		const template = window({
+		title: options.title,
+		width: options.width,
+		height: "auto",
+		padding: 8,
+		position,
+		onClose: () => { onClose(); options.onClose?.(); },
+		direction: LayoutDirection.Vertical,
+		content: [
+			...options.content,
+			horizontal({
+				height: 14,
+				content: [
+					label({ text: "", width: "1w" }),
+					colouredButton({//sprite5529, 5528 (sprite IDs for ? sprite, maybe one day)
+						text: "?",
+						width: 22,
+						height: 22,
+						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
+						onClick: () => openEffectExplanationWindow(options.title, options.explanation ?? defaultExplanation)
+					}),
+					label({ text: "", width: "1w" }),
+					colouredButton({
+						text: "Cancel",
+						width: 70,
+						height: 22,
+						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
+						onClick: () => handle?.close()
+					}),
+					label({ text: "", width: "1w" }),
+					colouredButton({
+						text: `{WHITE}${options.saveText}`,
+						width: 110,
+						height: 22,
+						colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
+						onClick: () => {
+							options.onSave();
+							handle?.close();
+						}
+					}),
+					label({ text: "", width: "1w" }),
+				]
+			}),
+			label({ text: "", width: "1w", height: 6 })
+		]
+		});
+
+		handle = template.open();
+		return handle;
+	});
+}
+
+
+
+//Load colour sequence once to colour sprite preview
 export interface LoadColoursEditorModel {
 	colours: LoadColours;
 	sequenceName: ReturnType<typeof store<string>>;
@@ -22,16 +171,6 @@ export interface EffectSizePreset {
 	physicalSize: number;
 	extraLongevity: number;
 	spikeLength?: number;
-}
-
-export function cloneLoadColours(colours?: LoadColours): LoadColours
-{
-	if (!colours)
-	{
-		return new LoadColours([], "", false, "", {});
-	}
-
-	return new LoadColours([...(colours.colourList ?? [])], colours.sequenceName, colours.reverseSequence, colours.pattern, { ...(colours.namedColours ?? {}) });
 }
 
 export function createLoadColoursEditor(source?: LoadColours, namedColourKeys: string[] = []): LoadColoursEditorModel
@@ -177,16 +316,18 @@ export function createSequenceDropdownRowWithReverse(sequenceName: ReturnType<ty
 				width: 124,
 				height: 14
 			}),
-			button({
-				text: compute(reverseSequence, value => value ? "Reversed" : "Forward"),
+			colouredButton({
+				text: compute(reverseSequence, value => value ? "<<<" : ">>>"),
 				width: 36,
+				height: 14,
+				colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 				onClick: () => reverseSequence.set(!reverseSequence.get())
 			})
 		]
 	});
 }
 
-export function createPatternDropdownRow(patternName: ReturnType<typeof store<string>>, options: string[], onPatternChange?: () => void, labelText: string = "Pattern")
+export function createPatternDropdownRow(patternName: ReturnType<typeof store<string>>, options: string[], onPatternChange?: () => void, labelText: string = "Colour Pattern")
 {
 	const initialPattern = normalizePatternSelection(patternName, options);
 	const selectedIndex = store(resolveDropdownIndex(initialPattern, options));
@@ -229,46 +370,28 @@ export function createTextRow(labelText: string, valueStore: ReturnType<typeof s
 
 export function createNumberRow(labelText: string, valueStore: ReturnType<typeof store<number>>, minimum: number, maximum: number, step: number = 1, width: number = 90)
 {
-	const stepText = `${step}`;
-	const decimalPointIndex = stepText.indexOf(".");
-	const precision = decimalPointIndex >= 0 ? stepText.length - decimalPointIndex - 1 : 0;
-	const precisionScale = Math.pow(10, precision);
-	const normalizeValue = (value: number): number => {
-		if (precision === 0)
-		{
-			return value;
-		}
-
-		return Math.round(value * precisionScale) / precisionScale;
-	};
-
-	return flexible({
-		direction: LayoutDirection.Horizontal,
-		height: 14,
-		content: [
-			label({ text: labelText, width: 140 }),
-			spinner({
-				value: valueStore,
-				onChange: value => valueStore.set(normalizeValue(value)),
-				width,
-				step,
-				minimum,
-				maximum
-			})
-		]
+	return numberInputSpinner({
+		labelText,
+		valueStore,
+		minimum,
+		maximum,
+		step,
+		width
 	});
 }
 
-export function createEffectSizePresetRow(presets: EffectSizePreset[], onApplyPreset: (preset: EffectSizePreset) => void, labelText: string = "Preset")
+export function createEffectSizePresetRow<T extends { label: string }>(presets: T[], onApplyPreset: (preset: T) => void, labelText: string = "Preset")
 {
 	return flexible({
 		direction: LayoutDirection.Horizontal,
 		height: 14,
 		content: [
-			label({ text: labelText, width: 140, height: 14 }),
-			...presets.map(preset => button({
+			label({ text: labelText, width: 140, height: 18 }),
+			...presets.map(preset => colouredButton({
 				text: preset.label,
 				width: 28,
+				height: 14,
+				colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 				onClick: () => onApplyPreset(preset)
 			}))
 		]

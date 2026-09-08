@@ -5,16 +5,19 @@ import { Shell, ShotHeadType } from "../../Firework";
 import { Load } from "../../Load";
 import { ShellLoad } from "../../ShellLoad";
 
-
 export class CometEffect extends BurstEffect {
+	override readonly className: string = "CometEffect";
+
 	constructor(extraLongevity: number, colours: LoadColours, public timeTillStall: number, public trailDensity: number = 0.5, public trailWidth: number = 3, public tilt: number, public azimuth: number ) {
 		super(EffectType.Comet, 0, 0, extraLongevity, colours);
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "CometEffect" }; }
-
 	static fromParkData(effect: any): CometEffect {
 		return new CometEffect(effect?.extraLongevity ?? 0, LoadColours.fromParkData(effect?.colours), effect?.timeTillStall ?? 0, effect?.trailDensity ?? 0.5, effect?.trailWidth ?? 3, effect?.tilt ?? 0, effect?.azimuth ?? 0);
+	}
+
+	override getDuration(): number {
+		return this.timeTillStall + this.extraLongevity * 1.5 + 20;
 	}
 
 	override Make(posOri: CoordsXYZ, _velocity: CoordsXYZ): BurstEffect | undefined {

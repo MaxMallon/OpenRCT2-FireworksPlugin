@@ -1,8 +1,19 @@
 import { store } from "openrct2-flexui";
 import { CometEffect } from "../../fireworks/structures/effects/burstEffects/cometEffect";
-import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, EffectSizePreset } from "./shared";
-import { openEffectWindow } from "./template";
+import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, EffectSizePreset , ExplanationParagraph, openEffectWindow } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
+
+const explanation: ExplanationParagraph[] = [
+	{ text: "A single comet is launched from a point.", height: 20 },
+	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
+	{ term: "Time Till Stall", description: "The number of ticks before the particles reach\ntheir max height. Affects life time of particles.", height: 28 },
+	{ term: "Trail Density", description: "Controls the density of the comet trails", height: 14 },
+	{ term: "Trail Width", description: "Controls the width of the comet trails", height: 14 },
+	{ term: "Tilt", description: "The angle in the vertical plane of where\nthe particles are shot towards.\n0 = up, 90 = horizontal, 180 = down", height: 36 },
+	{ term: "Azimuth", description: "The angle in the horizontal plane of where\nthe particles are shot towards.", height: 28 },
+	{ term: "Head", description: "Colour of the comet's head", height: 14 },
+	{ term: "Trail 1-2", description: "Colours of the comet's trail", height: 14 },
+];
 
 export function openCometEffectWindow(effect: CometEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
@@ -31,9 +42,10 @@ export function openCometEffectWindow(effect: CometEffect | undefined, onSave: (
 	openEffectWindow({
 		title: "Comet Mine Effect",
 		width: 340,
-		height: 390,
+		height: 400,
 		saveText: isEditing ? "Update Effect" : "Add Effect",
 		onClose,
+		explanation,
 		content: [
 			createEffectSizePresetRow(sizePresets, preset => {
 				timeTillStall.set(preset.size);

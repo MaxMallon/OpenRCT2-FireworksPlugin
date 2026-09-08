@@ -1,22 +1,15 @@
-/**
- * usageChecker.ts
- *
- * Utilities for finding which named items reference a given item, and for
- * removing those references when the referenced item is deleted.
- * Also provides buildValidationContext() for play/test validation.
- */
-
 import { ColourSequence } from "./structures/ColourStructures";
-import { cloneLoad, cloneEffect } from "./loadHelpers";
+import { cloneEffect, cloneLoad, cloneSequence } from "./cloneHelpers";
 import { getLoadMap, getShellMap, getGroundEffectMap, getSequenceMap, getShotShowMap, resolveSequence, setLoadList, setShellList, setGroundEffectList, setSequenceList, setShotShow, colourSequences, launchSites } from "./persistent";
 import { EffectType } from "./structures/Effect";
 import { Shell, GroundEffect } from "./structures/Firework";
 import { LaunchSite } from "./structures/LaunchSite";
 import { Load } from "./structures/Load";
-import { Sequence, SequenceEntry, SequenceItemType } from "./structures/Sequence";
+import { Sequence, SequenceItemType } from "./structures/Sequence";
 import { ShellLoad } from "./structures/ShellLoad";
 import { Show } from "./structures/Show";
 
+// Checker to see if items are still used, to warn user when they try to delete them
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -36,6 +29,38 @@ export interface ValidationContext {
 export interface ValidationIssue {
 	path: string;
 	problem: string;
+}
+
+export function loadContainsShellOfShellsEffect(load: Load): boolean
+{
+	return load.effects.some(effect => effect.type === EffectType.ShellOfShells);
+}
+
+export function collectShellOfShellsReferencedLoadNames(loads: Load[]): string[]
+{
+	const names: string[] = [];
+	for (const load of loads)
+	{
+		for (const effect of load.effects)
+		{
+			if (effect.type !== EffectType.ShellOfShells)
+			{
+				continue;
+			}
+
+			const subLoads = (effect as unknown as { subLoads?: ShellLoad[] }).subLoads;
+			for (const subLoad of subLoads ?? [])
+			{
+				const name = subLoad.loadName.trim();
+				if (name && names.indexOf(name) < 0)
+				{
+					names.push(name);
+				}
+			}
+		}
+	}
+
+	return names;
 }
 
 
@@ -62,7 +87,7 @@ export function findColourSequenceUsages(seqName: string): UsageReference[] {
 	if (!trimmed) return [];
 	const refs: UsageReference[] = [];
 	for (const load of getLoadMap().values()) {
-		if (load.effects.some(e => e.colours.sequenceName.trim() === trimmed)) {
+		if (load.effects.some(e => (e.colours?.sequenceName ?? "").trim() === trimmed)) {
 			refs.push({ kind: "load", name: load.name });
 		}
 	}
@@ -102,7 +127,7 @@ export function findLoadUsages(loadName: string): UsageReference[] {
 			refs.push({ kind: "shell", name: shell.name, detail: "ascend load" });
 		}
 	}
-	// BigBouqet sub-loads inside other loads
+	// Shell of Shells sub-loads inside other loads
 	for (const load of getLoadMap().values()) {
 		for (const effect of load.effects) {
 			if (effect.type === EffectType.ShellOfShells) {
@@ -165,15 +190,6 @@ export function findSequenceUsages(seqName: string): UsageReference[] {
 // Removal helpers ("Remove from all" option)
 // ---------------------------------------------------------------------------
 
-/** Clone a Sequence for safe mutation. */
-function cloneSequence(seq: Sequence): Sequence {
-	const cloned = new Sequence(seq.name, []);
-	cloned.items = seq.items.map(e => new SequenceEntry(
-		e.itemName, e.itemType, e.timeTillLight, e.cumulativeTimeTillLight, e.nextItemAfterEnd
-	));
-	return cloned;
-}
-
 /**
  * Remove entries matching itemName+itemType from a sequence clone using
  * lock-on-time mode (absolute times of subsequent entries are preserved).
@@ -214,7 +230,7 @@ export function removeColourSequenceUsages(seqName: string): void {
 
 	// Strip matching effects from loads
 	const updatedLoads = [...getLoadMap().values()].map(load => {
-		const kept = load.effects.filter(e => e.colours.sequenceName.trim() !== trimmed);
+		const kept = load.effects.filter(e => (e.colours?.sequenceName ?? "").trim() !== trimmed);
 		if (kept.length === load.effects.length) return load;
 		return new Load(kept.map(cloneEffect), load.name);
 	});
@@ -222,7 +238,7 @@ export function removeColourSequenceUsages(seqName: string): void {
 
 	// Strip matching effects from ground effects
 	const updatedGes = [...getGroundEffectMap().values()].map(ge => {
-		const kept = ge.effects.filter(e => e.colours.sequenceName.trim() !== trimmed);
+		const kept = ge.effects.filter(e => (e.colours?.sequenceName ?? "").trim() !== trimmed);
 		if (kept.length === ge.effects.length) return ge;
 		return new GroundEffect(kept.map(cloneEffect), ge.name, ge.position);
 	});
@@ -265,7 +281,7 @@ export function removeLaunchSiteUsages(siteName: string): void {
 /**
  * Cascade-delete every shell that uses the given load (main load or any ascend
  * load). Each shell is first removed from all sequences (lock-on-time), then
- * deleted from the shellMap. Shell-of-Shells (BigBouqet) sub-load references
+ * deleted from the shellMap. Shell-of-Shells sub-load references
  * inside other loads and ground effects are stripped rather than causing
  * full deletions.
  */
@@ -288,7 +304,7 @@ export function removeLoadUsages(loadName: string): void {
 		setShellList([...getShellMap().values()].filter(s => shellNames.indexOf(s.name) < 0));
 	}
 
-	// Strip BigBouqet sub-load references from other loads
+	// Strip Shell-of-Shells sub-load references from other loads
 	let loadChanged = false;
 	const updatedLoads = [...getLoadMap().values()].map(load => {
 		const cloned = cloneLoad(load);
@@ -308,7 +324,7 @@ export function removeLoadUsages(loadName: string): void {
 	});
 	if (loadChanged) setLoadList(updatedLoads);
 
-	// Strip BigBouqet sub-load references from ground effects
+	// Strip Shell-of-Shells sub-load references from ground effects
 	let geChanged = false;
 	const updatedGes = [...getGroundEffectMap().values()].map(ge => {
 		let changed = false;

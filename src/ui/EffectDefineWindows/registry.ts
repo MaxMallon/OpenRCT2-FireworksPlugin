@@ -1,4 +1,4 @@
-import { BigBouqetEffect } from "../../fireworks/structures/effects/burstEffects/bigBouqetEffect";
+import { ShellOfShellsEffect } from "../../fireworks/structures/effects/burstEffects/shellOfShellsEffect";
 import { PalmEffect, SprayBurstEffect } from "../../fireworks/structures/effects/burstEffects/palmEffect";
 import { CometEffect } from "../../fireworks/structures/effects/burstEffects/cometEffect";
 import { CometFanEffect } from "../../fireworks/structures/effects/burstEffects/cometFanEffect";
@@ -13,7 +13,7 @@ import { SphereEffect } from "../../fireworks/structures/effects/burstEffects/sp
 import { SprayEffectFromGround } from "../../fireworks/structures/effects/burstEffects/sprayEffect";
 import { SprayFanEffect } from "../../fireworks/structures/effects/burstEffects/sprayFanEffect";
 import { StarEffect } from "../../fireworks/structures/effects/burstEffects/starEffect";
-import { openBigBouqetEffectWindow } from "./bigBouqetEffectWindow";
+import { openShellOfShellsEffectWindow as openShellOfShellsEffectWindow } from "./shellOfShellsWindow";
 import { openPalmEffectWindow } from "./palmEffectWindow";
 import { openCometEffectWindow } from "./cometEffectWindow";
 import { openCometFanEffectWindow } from "./cometFanEffectWindow";
@@ -30,13 +30,25 @@ import { openSprayFanEffectWindow } from "./sprayFanEffectWindow";
 import { openStarEffectWindow } from "./starEffectWindow";
 import { openSprayBurstEffectWindow } from "./sprayBurstEffectWindow";
 import { EffectType, Effect } from "../../fireworks/structures/Effect";
+import { isPopupOpen } from "../popupWindows";
+import { EFFECT_WINDOW_GROUP } from "./effectWindowTemplate";
+
+function effectWindowAlreadyOpen(): boolean
+{
+	return isPopupOpen(EFFECT_WINDOW_GROUP);
+}
 
 export function openEffectEditorWindowForType(effectType: EffectType, onSave: (effect: Effect) => void, onClose?: () => void): void
 {
+	if (effectWindowAlreadyOpen())
+	{
+		onClose?.();
+		return;
+	}
 	switch (effectType)
 	{
 		case EffectType.ShellOfShells:
-			openBigBouqetEffectWindow(undefined, onSave, onClose);
+			openShellOfShellsEffectWindow(undefined, onSave, onClose);
 			return;
 		case EffectType.Palm:
 			openPalmEffectWindow(undefined, onSave, false, onClose);
@@ -90,10 +102,15 @@ export function openEffectEditorWindowForType(effectType: EffectType, onSave: (e
 
 export function openEffectEditorWindowForEffect(effect: Effect, onSave: (effect: Effect) => void, onClose?: () => void): void
 {
+	if (effectWindowAlreadyOpen())
+	{
+		onClose?.();
+		return;
+	}
 	switch (effect.type)
 	{
 		case EffectType.ShellOfShells:
-			openBigBouqetEffectWindow(effect as BigBouqetEffect, onSave, onClose);
+			openShellOfShellsEffectWindow(effect as ShellOfShellsEffect, onSave, onClose);
 			return;
 		case EffectType.Palm:
 			openPalmEffectWindow(effect as PalmEffect, onSave, true, onClose);

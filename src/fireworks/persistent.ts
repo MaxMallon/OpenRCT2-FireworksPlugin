@@ -1,21 +1,20 @@
 import { Colour, store } from "openrct2-flexui";
 import { ColourSequence } from "./structures/ColourStructures";
 import { defaultColourSequences, deserializeParkState, serializeParkState } from "./parkStorage";
-import type { PlaybackState, SerializedPlayerState, SerializedShowPlayerState } from "./parkStorage";
-import { EmitterEffect } from "./structures/Effect";
+import type { PlaybackState, SerializedPlayerState, SerializedShowPlayerState, SerializedExplosion, SerializedEditorStates } from "./parkStorage";
+import { Effect, EmitterEffect } from "./structures/Effect";
 import { Shell, GroundEffect } from "./structures/Firework";
 import { LaunchSite } from "./structures/LaunchSite";
 import { Load } from "./structures/Load";
 import { Sequence } from "./structures/Sequence";
 import { ShellLoad } from "./structures/ShellLoad";
 import { Show } from "./structures/Show";
+import { pluginVersion, downloadURL } from "../pluginInfo";
+import { openNewerPluginVersionWarningWindow } from "../ui/newerPluginVersionWarningWindow";
+
+// Everything that needs to be saved to file
 
 const parkStorageKey = "fireworks-plugin-state";
-
-function createDefaultColourSequences(): ColourSequence[]
-{
-	return defaultColourSequences();
-}
 
 export const launchSites: LaunchSite[] = [];
 export const launchSitesRevision = store(0);
@@ -31,7 +30,7 @@ export let editSequence: Sequence | undefined = undefined;
 export let sequenceMap: Map<string, Sequence> = new Map();
 export let editShow: Show | undefined = undefined;
 export let showMap: Map<string, Show> = new Map();
-export const colourSequences = store<ColourSequence[]>(createDefaultColourSequences());
+export const colourSequences = store<ColourSequence[]>(defaultColourSequences());
 
 // Reactive UI stores — kept in sync by all setters; tabs bind to these directly.
 export const definedLoads = store<Load[]>([]);
@@ -49,6 +48,47 @@ export let showTick: number = 0;
 
 let isRestoringParkState = false;
 
+function isNewerPluginVersion(savedVersion: string, currentVersion: string): boolean
+{
+	const savedParts = savedVersion.match(/\d+/g);
+	const currentParts = currentVersion.match(/\d+/g);
+	if (!savedParts || !currentParts)
+	{
+		return false;
+	}
+
+	const partCount = Math.max(savedParts.length, currentParts.length);
+	for (let index = 0; index < partCount; index++)
+	{
+		const savedPart = Number(savedParts[index] ?? 0);
+		const currentPart = Number(currentParts[index] ?? 0);
+		if (savedPart !== currentPart)
+		{
+			return savedPart > currentPart;
+		}
+	}
+
+	return false;
+}
+
+function warnIfParkUsesNewerPluginVersion(savedVersion: string): void
+{
+	if (!isNewerPluginVersion(savedVersion, pluginVersion))
+	{
+		return;
+	}
+
+	const title = "Newer Fireworks Plugin Version";
+	const message = `This park was saved with Fireworks ${savedVersion}, but this installation is ${pluginVersion}. An attempt to load has been made, but some or all features may be broken.\nDownload the new version from ${downloadURL}`;
+	if (typeof ui !== "undefined")
+	{
+		openNewerPluginVersionWarningWindow(savedVersion, pluginVersion, downloadURL);
+		return;
+	}
+
+	console.log(`Warning: ${title}: ${message}`);
+}
+
 export function GetLoadByName(name: string): Load | undefined {
 	return loadMap.get(name);
 }
@@ -64,8 +104,77 @@ export function GetSequenceByName(name: string): Sequence | undefined {
 export function GetShowByName(name: string): Show | undefined {
 	return showMap.get(name);
 }
+function normalizeLaunchSiteName(name: string): string
+{
+	return name.trim();
+}
+
+export function getLaunchSiteByName(name: string): LaunchSite | undefined
+{
+	const normalizedName = normalizeLaunchSiteName(name);
+	if (!normalizedName)
+	{
+		return undefined;
+	}
+
+	return launchSites.find(site => site.name === normalizedName);
+}
+
 export function GetLaunchSiteByName(name: string): LaunchSite | undefined {
-	return launchSites.find(site => site.name === name);
+	return getLaunchSiteByName(name);
+}
+
+export function resolveLaunchSitePosition(position: string | CoordsXYZ): CoordsXYZ | undefined
+{
+	if (typeof position !== "string")
+	{
+		return position;
+	}
+
+	const launchSite = getLaunchSiteByName(position);
+	if (!launchSite)
+	{
+		return undefined;
+	}
+
+	if (launchSite.entityId === undefined)
+	{
+		return launchSite.position;
+	}
+
+	const entity = map.getEntity(launchSite.entityId);
+	if (!entity)
+	{
+		return launchSite.position;
+	}
+
+	return {
+		x: entity.x + launchSite.position.x,
+		y: entity.y + launchSite.position.y,
+		z: entity.z + launchSite.position.z
+	};
+}
+
+export function registerLaunchSite(name: string, position: CoordsXYZ): void
+{
+	const normalizedName = normalizeLaunchSiteName(name);
+	if (!normalizedName)
+	{
+		return;
+	}
+
+	setLaunchSites([...launchSites, new LaunchSite(normalizedName, position, undefined)]);
+}
+
+export function unregisterLaunchSite(name: string): void
+{
+	const normalizedName = normalizeLaunchSiteName(name);
+	if (!normalizedName)
+	{
+		return;
+	}
+
+	setLaunchSites(launchSites.filter(site => site.name !== normalizedName));
 }
 export function GetColourSequenceByName(name: string): ColourSequence | undefined {
 	return colourSequences.get().find(seq => seq.name === name);
@@ -86,7 +195,7 @@ export function registerPlayerCallbacks(
 }
 
 // Callbacks registered by showPlayer.ts to avoid circular imports.
-type ShowPlayerSnapshotFn = () => SerializedShowPlayerState;
+type ShowPlayerSnapshotFn = () => SerializedShowPlayerState[];
 type RestoreShowPlayerFn = (playback: PlaybackState) => void;
 let _getShowPlayerSnapshot: ShowPlayerSnapshotFn | undefined;
 let _restoreShowPlayer: RestoreShowPlayerFn | undefined;
@@ -97,6 +206,41 @@ export function registerShowPlayerCallbacks(
 ): void {
 	_getShowPlayerSnapshot = snapshotFn;
 	_restoreShowPlayer = restoreFn;
+}
+
+// Callback for in-flight shell explosions.
+type GetExplosionsFn = () => SerializedExplosion[];
+let _getExplosionsSnapshot: GetExplosionsFn | undefined;
+
+export function registerExplosionsCallback(fn: GetExplosionsFn): void {
+	_getExplosionsSnapshot = fn;
+}
+
+// Callback for active continuous emitters.
+type GetEmittersFn = () => any[];
+let _getEmittersSnapshot: GetEmittersFn | undefined;
+
+export function registerEmittersCallback(fn: GetEmittersFn): void {
+	_getEmittersSnapshot = fn;
+}
+
+// Callbacks for editor state persistence.
+type EditorSnapshotFn = () => SerializedEditorStates;
+type RestoreEditorFn = (state: SerializedEditorStates | undefined, decodeEffect: (effect: any) => Effect) => void;
+type ResetEditorFn = () => void;
+
+let _getEditorSnapshot: EditorSnapshotFn | undefined;
+let _restoreEditorFromSnapshot: RestoreEditorFn | undefined;
+let _resetEditorState: ResetEditorFn | undefined;
+
+export function registerEditorCallbacks(
+	snapshotFn: EditorSnapshotFn,
+	restoreFn: RestoreEditorFn,
+	resetFn: ResetEditorFn
+): void {
+	_getEditorSnapshot = snapshotFn;
+	_restoreEditorFromSnapshot = restoreFn;
+	_resetEditorState = resetFn;
 }
 
 function getParkStorage(): { get<T>(key: string): T | undefined; set<T>(key: string, value: T): void } | undefined
@@ -120,6 +264,9 @@ function clearTransientState(): void
 	fireworkEffectsActive = false;
 	effectTick = 0;
 	interruptWhenTooManyParticles = true;
+	if (_resetEditorState) {
+		_resetEditorState();
+	}
 }
 
 export function resetPersistentStateToDefaults(): void
@@ -136,7 +283,7 @@ export function resetPersistentStateToDefaults(): void
 	definedGroundEffects.set([]);
 	definedSequences.set([]);
 	definedShows.set([]);
-	colourSequences.set(createDefaultColourSequences());
+	colourSequences.set(defaultColourSequences());
 	launchSitesRevision.set(0);
 	clearTransientState();
 }
@@ -155,6 +302,7 @@ export function saveParkState(): void
 	}
 
 	const players = _getPlayersSnapshot ? _getPlayersSnapshot() : [];
+	const editors = _getEditorSnapshot ? _getEditorSnapshot() : undefined;
 	storage.set(parkStorageKey, serializeParkState({
 		launchSites,
 		loadMap,
@@ -168,8 +316,11 @@ export function saveParkState(): void
 			fireworkEffectsActive,
 			interruptWhenTooManyParticles,
 			players,
-			showPlayer: _getShowPlayerSnapshot ? _getShowPlayerSnapshot() : undefined
-		}
+			pendingExplosions: _getExplosionsSnapshot?.(),
+			pendingEmitters: _getEmittersSnapshot?.(),
+			showPlayers: _getShowPlayerSnapshot ? _getShowPlayerSnapshot() : undefined
+		},
+		editors
 	}));
 }
 
@@ -201,6 +352,7 @@ export function loadParkState(): void
 			setShotShowMap,
 			setColourSequences,
 			resetTransientState: clearTransientState,
+			onPluginVersionLoaded: warnIfParkUsesNewerPluginVersion,
 			restorePlaybackState: (playback: PlaybackState) => {
 				effectTick = isFinite(playback.ticks) ? Math.max(0, Math.floor(playback.ticks)) : 0;
 				fireworkEffectsActive = !!playback.fireworkEffectsActive;
@@ -211,6 +363,11 @@ export function loadParkState(): void
 				if (_restoreShowPlayer) {
 					_restoreShowPlayer(playback);
 				}
+			},
+			restoreEditorState: (editors, decodeEffectFn) => {
+				if (_restoreEditorFromSnapshot && decodeEffectFn) {
+					_restoreEditorFromSnapshot(editors, decodeEffectFn);
+				}
 			}
 		});
 	}
@@ -218,8 +375,6 @@ export function loadParkState(): void
 	{
 		isRestoringParkState = false;
 	}
-
-	saveParkState();
 }
 
 export function getLoadMap(): Map<string, Load> { return loadMap; }
@@ -240,31 +395,26 @@ export function setLoadMap(value: Map<string, Load>): void {
 	loadMap.clear();
 	value.forEach((v, k) => loadMap.set(k, v));
 	definedLoads.set([...loadMap.values()]);
-	saveParkState();
 }
 export function setShellMap(value: Map<string, Shell>): void {
 	shellMap.clear();
 	value.forEach((v, k) => shellMap.set(k, v));
 	definedShells.set([...shellMap.values()]);
-	saveParkState();
 }
 export function setGroundEffectMap(value: Map<string, GroundEffect>): void {
 	groundEffectMap.clear();
 	value.forEach((v, k) => groundEffectMap.set(k, v));
 	definedGroundEffects.set([...groundEffectMap.values()]);
-	saveParkState();
 }
 export function setSequenceMap(value: Map<string, Sequence>): void {
 	sequenceMap.clear();
 	value.forEach((v, k) => sequenceMap.set(k, v));
 	definedSequences.set([...sequenceMap.values()]);
-	saveParkState();
 }
 export function setShotShowMap(value: Map<string, Show>): void {
 	showMap.clear();
 	value.forEach((v, k) => showMap.set(k, v));
 	definedShows.set([...showMap.values()]);
-	saveParkState();
 }
 
 // Array setters — rebuild map from array keyed by item name
@@ -272,31 +422,26 @@ export function setLoadList(value: Load[]): void {
 	loadMap.clear();
 	for (const item of value) { loadMap.set(item.name, item); }
 	definedLoads.set([...loadMap.values()]);
-	saveParkState();
 }
 export function setShellList(value: Shell[]): void {
 	shellMap.clear();
 	for (const item of value) { shellMap.set(item.name, item); }
 	definedShells.set([...shellMap.values()]);
-	saveParkState();
 }
 export function setGroundEffectList(value: GroundEffect[]): void {
 	groundEffectMap.clear();
 	for (const item of value) { groundEffectMap.set(item.name, item); }
 	definedGroundEffects.set([...groundEffectMap.values()]);
-	saveParkState();
 }
 export function setSequenceList(value: Sequence[]): void {
 	sequenceMap.clear();
 	for (const item of value) { sequenceMap.set(item.name, item); }
 	definedSequences.set([...sequenceMap.values()]);
-	saveParkState();
 }
 export function setShotShow(value: Show[]): void {
 	showMap.clear();
 	for (const item of value) { showMap.set(item.name, item); }
 	definedShows.set([...showMap.values()]);
-	saveParkState();
 }
 
 // Name-based lookup helpers
@@ -326,16 +471,29 @@ export function setInterruptWhenTooManyParticles(value: boolean): void { interru
 export function setColourSequences(value: ColourSequence[]): void
 {
 	colourSequences.set(value);
-	saveParkState();
 }
 
 export function setLaunchSites(value: LaunchSite[]): void
 {
-	launchSites.splice(0, launchSites.length, ...value);
+	const normalizedSites = value
+		.map(site => {
+			const name = normalizeLaunchSiteName(site.name);
+			return name ? new LaunchSite(name, site.position, site.entityId) : undefined;
+		})
+		.filter((site): site is LaunchSite => site !== undefined);
+	launchSites.splice(0, launchSites.length, ...normalizedSites);
 	launchSitesRevision.set(launchSitesRevision.get() + 1);
-	saveParkState();
 }
 
+export function UpdateLaunchSiteMapResize(shiftX: number, shiftY: number): void {
+	launchSites.forEach(site => {
+		if (site.entityId === undefined) {
+			site.position.x += shiftX * 32;
+			site.position.y += shiftY * 32;
+		}
+	});
+	launchSitesRevision.set(launchSitesRevision.get() + 1);
+}
 
 export function getColourSequenceByName(name: string): Colour[] | undefined
 {
@@ -386,17 +544,4 @@ export function setHasSeenTutorial(value: boolean): void
 	getSharedStorage()?.set(sharedStorageKey_HasSeenTutorial, value);
 }
 
-/*//TODO Max turn back on once PR merged
-function UpdateLaunchSiteMapResize(shiftX: number, shiftY: number): void {
-	launchSites.forEach(site => {
-		if (site.entityId === undefined) {
-			site.position.x += shiftX * 32;
-			site.position.y += shiftY * 32;
-		}
-	});
-	launchSitesRevision.set(launchSitesRevision.get() + 1);
-	saveParkState();
-}
 
-context.subscribe("map.resize", (e: MapChangeSizeArgs) => UpdateLaunchSiteMapResize(e.shiftX, e.shiftY));
-*/

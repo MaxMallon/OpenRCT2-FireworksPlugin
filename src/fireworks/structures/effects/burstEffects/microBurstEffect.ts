@@ -5,14 +5,18 @@ import { BurstEffect, EffectType } from "../../Effect";
 import { GetColouredEffectSprite, sprite } from "../../../../img/images";
 
 export class MicroBurstEffect extends BurstEffect {
+	override readonly className: string = "MicroBurstEffect";
+
 	constructor( colours: LoadColours, public speedMultiplier: number = 1) {
 		super(EffectType.MicroBurst, 0, 0, 0, colours);
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "MicroBurstEffect" }; }
-
 	static fromParkData(effect: any): MicroBurstEffect {
 		return new MicroBurstEffect(LoadColours.fromParkData(effect?.colours));
+	}
+
+	override getDuration(): number {
+		return 44 / this.speedMultiplier;
 	}
 
 	override Make(posOri: CoordsXYZ, velocity: CoordsXYZ): BurstEffect | undefined {

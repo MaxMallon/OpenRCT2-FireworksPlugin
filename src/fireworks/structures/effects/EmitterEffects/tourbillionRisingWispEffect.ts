@@ -20,6 +20,8 @@ export class TourbillionRisingWispEffect extends EmitterEffect
 	public driftAngle: number = Math.random() * Math.PI * 2;
 	public driftStrength: number = 0.003 + Math.random() * 0.007;
 
+	override readonly className: string = "TourbillionRisingWispEffect";
+
 	constructor(
 		public colour: Colour,
 		public randomness: number = 80,
@@ -32,7 +34,7 @@ export class TourbillionRisingWispEffect extends EmitterEffect
 
 	override toParkData(): any
 	{
-		return { ...super.toParkData(), className: "TourbillionRisingWispEffect", particle: undefined };
+		return { ...super.toParkData(), particle: undefined, particleId: this.particle?.id ?? -1 };
 	}
 
 	static fromParkData(effect: any): TourbillionRisingWispEffect
@@ -102,6 +104,7 @@ export class TourbillionRisingWispEffect extends EmitterEffect
 		this.particle.z = this.posZ;
 		this.particle.velocity = { x: 0, y: 0, z: counterGravity1sec };
 
+		//magic math makes wisp go zzoooommmm
 		// Compute two orthogonal basis vectors for the disc perpendicular to the travel direction
 		const speed = Math.sqrt(this.velX * this.velX + this.velY * this.velY + this.velZ * this.velZ);
 		let dx = 0, dy = 0, dz = 1;

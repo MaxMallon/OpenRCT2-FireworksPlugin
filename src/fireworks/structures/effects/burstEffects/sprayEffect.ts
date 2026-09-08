@@ -13,14 +13,18 @@ export class SprayEffect extends BurstEffect {
 
 
 export class SprayEffectFromGround extends SprayEffect {
+	override readonly className: string = "SprayEffectFromGround";
+
 	constructor(amount: number, public azimuthBase: number, public tiltBase: number, public timeTillStall: number, public verticalSpread: number, extraLongevity: number, public colour: Colour) {
 		super(amount, extraLongevity);
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "SprayEffectFromGround" }; }
-
 	static fromParkData(effect: any): SprayEffectFromGround {
 		return new SprayEffectFromGround(effect?.amount ?? 0, effect?.azimuthBase ?? effect?.angleXBase ?? 0, effect?.tiltBase ?? effect?.angleYBase ?? 0, effect?.timeTillStall ?? 0, effect?.verticalSpread ?? 0, effect?.extraLongevity ?? 0, effect?.colour ?? Colour.Invisible);
+	}
+
+	override getDuration(): number {
+		return this.extraLongevity + this.timeTillStall + 30;
 	}
 
 	override Make(posOri: CoordsXYZ, _velocity: CoordsXYZ): Effect | undefined {
@@ -60,14 +64,18 @@ export class SprayEffectFromGround extends SprayEffect {
 }
 
 export class SprayEffectFromAir extends SprayEffect {
+	override readonly className: string = "SprayEffectFromAir";
+
 	constructor(amount: number, public baseDir: CoordsXYZ, public lifeTime: number, public speed: number, public spread: number, public thicknessSpread: number, public colour: Colour) {
 		super(amount, lifeTime);
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "SprayEffectFromAir" }; }
-
 	static fromParkData(effect: any): SprayEffectFromAir {
 		return new SprayEffectFromAir(effect?.amount ?? 0, effect?.baseDir ?? { x: 0, y: 0, z: 0 }, effect?.lifeTime ?? 0, effect?.speed ?? 0, effect?.spread ?? 0, effect?.thicknessSpread ?? 0, effect?.colour ?? Colour.Invisible);
+	}
+
+	override getDuration(): number {
+		return this.lifeTime;
 	}
 
 

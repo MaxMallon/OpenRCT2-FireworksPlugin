@@ -1,96 +1,48 @@
-import { launchSites, saveParkState } from "./persistent";
-import { LaunchSite } from "./structures/LaunchSite";
 import { getMainWindowBounds } from "../ui/windowState";
 
-export function syncLaunchSites(sites: Array<{ name: string; position: CoordsXYZ; entityId?: number }>): void
+//contains random helpers for bits and bobs
+
+
+let storedWaterIdentifier: string | undefined = undefined;
+
+function getLoadedWaterIdentifier(): string | undefined
 {
-	launchSites.splice(0, launchSites.length);
-
-	for (const site of sites)
-	{
-		const normalizedName = normalizeLaunchSiteName(site.name);
-		if (!normalizedName)
-		{
-			continue;
-		}
-
-		launchSites.push(new LaunchSite(normalizedName, site.position, site.entityId));
-	}
-
-	saveParkState();
+	const currentWater = objectManager.getObject("water", 0);
+	return currentWater ? currentWater.identifier : undefined;
 }
 
-export function getLaunchSiteByName(name: string): LaunchSite | undefined
+export function loadDefaultPalette(): void
 {
-    const normalizedName = normalizeLaunchSiteName(name);
-    if (!normalizedName)
-    {
-        return undefined;
-    }
-    for (const site of launchSites) {
-        if (site.name === normalizedName) return site;
-    }
-    return undefined;
-    }
-
-export function resolveLaunchSitePosition(position: string | CoordsXYZ): CoordsXYZ | undefined
-{
-	if (typeof position !== "string")
+	// Only capture the original water once, so repeated calls don't overwrite it with the palette's own identifier.
+	if (storedWaterIdentifier === undefined)
 	{
-		return position;
+		storedWaterIdentifier = getLoadedWaterIdentifier();
 	}
-	const launchSite =  getLaunchSiteByName(position);
-	if (!launchSite)
-	{
-		return undefined;
-	}
-	if (launchSite.entityId == undefined)
-		return launchSite.position;
-	else{
-		let ent = map.getEntity(launchSite.entityId);
-		if (ent)
-			return { x: ent.x + launchSite.position.x, y: ent.y + launchSite.position.y, z: ent.z + launchSite.position.z };
-		return launchSite.position;
-	}
-}
 
-
-function normalizeLaunchSiteName(name: string): string
-{
-	return name.trim();
-}
-
-export function registerLaunchSite(name: string, position: CoordsXYZ): void
-{
-	const normalizedName = normalizeLaunchSiteName(name);
-	if (!normalizedName)
+	if (getLoadedWaterIdentifier() === "rct2.water.wtrcyan")
 	{
 		return;
 	}
 
-	launchSites.push(new LaunchSite(normalizedName, position, undefined));
-	saveParkState();
+	objectManager.unload("water", 0);
+	objectManager.load("rct2.water.wtrcyan");
 }
 
-export function unregisterLaunchSite(name: string): void
+export function restorePalette(): void
 {
-	const normalizedName = normalizeLaunchSiteName(name);
-	if (!normalizedName)
+	if (!storedWaterIdentifier || getLoadedWaterIdentifier() === storedWaterIdentifier)
 	{
 		return;
 	}
-    let i = 0;
-     for (; i < launchSites.length; ++i){
-        const site = launchSites[i];
-        if (site.name === normalizedName) break;
-    }
-	if (i !== launchSites.length) {
-		launchSites.splice(i, 1);
-	}
 
-	saveParkState();
+	objectManager.unload("water", 0);
+	objectManager.load(storedWaterIdentifier);
 }
 
+export function canRestorePalette(): boolean
+{
+	return storedWaterIdentifier !== undefined && getLoadedWaterIdentifier() !== storedWaterIdentifier;
+}
 
 export function AddNewsMessage(message: string, target: number): void
 {
@@ -123,10 +75,10 @@ export function ticksToTimeString(ticks: number): string
 }
 
 
-export const zScaleOffset = 1.1;
+export const zScaleOffset = 1.1; //The z-scale units seem slightly smaller than the XY, for some reason. This offsets it roughly again. 
 export const tilePerSecond = 49427; //measured/from c++ code, velocity needed to travel 1 tile in 1 second roughly
 export const counterGravity1sec = 40 * 5041; //measured/from c++ code, upwards velocity needed to counter gravity's effects for 1 second
-export const tileSize = 32;
+export const tileSize = 32; //Units of movement per tile
 
 //Transform degrees to radians
 export function DegreeToRad(angle: number): number {

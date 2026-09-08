@@ -1,30 +1,14 @@
-import {
-    box,
-    button,
-    checkbox,
-    colourPicker,
-    compute,
-    dropdown,
-    flexible,
-    groupbox,
-    label,
-    LayoutDirection,
-    listview,
-    spinner,
-    store,
-    textbox,
-    window,
-    OpenWindow,
-    Colour
-} from "openrct2-flexui";
+import {    box,    checkbox,    colourPicker,    compute,    dropdown,    flexible,    groupbox,    label,    LayoutDirection,    listview,    store,    textbox,    OpenWindow,    Colour} from "openrct2-flexui";
+import { numberInputSpinner } from "../numberInputSpinner";
 import { ShellColours } from "../../fireworks/structures/ColourStructures";
-import { cloneLoad } from "../../fireworks/loadHelpers";
-import { getLoadList, getShellList, getShellToEdit, launchSites, launchSitesRevision, setShellList, setShellToEdit, definedShells } from "../../fireworks/persistent";
+import { cloneLoad, cloneShellBlueprint } from "../../fireworks/cloneHelpers";
+import { getLoadList, getShellList, getShellMap, getShellToEdit, launchSites, launchSitesRevision, setShellList, setShellToEdit, definedShells } from "../../fireworks/persistent";
 import * as persistent from "../../fireworks/persistent";
 import { LoadFireworks, Play } from "../../fireworks/fireworksEffectsPlayer";
 import { ResetCounts } from "../../fireworks/particleSpawner";
 import { resizeFireworksWindow } from "../fireworksEditorWindow";
 import { getMainWindowPosition } from "../windowState";
+import { openPopupWindow } from "../popupWindows";
 import { openDebuggerWindow } from "../debuggerWindow";
 import { buildValidationContext, findShellUsages, formatValidationIssues, removeItemFromSequences, ValidationIssue } from "../../fireworks/usageChecker";
 import { openUsageWarningWindow } from "../usageWarningWindow";
@@ -32,27 +16,55 @@ import { Shell, ShotHeadType } from "../../fireworks/structures/Firework";
 import { ShellLoad } from "../../fireworks/structures/ShellLoad";
 import { Load } from "../../fireworks/structures/Load";
 import { SequenceItemType } from "../../fireworks/structures/Sequence";
+import { colouredButton } from "../ColouredButton";
+import { beginPaletteTest } from "../../fireworks/testPaletteMode";
+import { decodeEffect, SerializedShellEditorState } from "../../fireworks/parkStorage";
+import { confirmDiscardChanges } from "../discardChangesWindow";
 
-const selectedShellIndex = store<number | undefined>(undefined);
-const editedShellName = store("");
-const selectedLoadName = store("");
-const selectedLaunchSiteName = store("");
-const headColour = store<Colour>(Colour.BrightYellow);
-const trail1Colour = store<Colour>(Colour.DarkOrange);
-const trail2Colour = store<Colour>(Colour.DarkOrange);
-const isBigHead = store(false);
-const trail = store(true);
-const trailDensity = store(0.5);
-const trailWidth = store(3);
-const azimuth = store(0);
-const tilt = store(0);
-const timeTillStall = store(75);
-const delay = store(75);
-const syncHeightAndDelay = store(true);
-const ascendEffectsStore = store<ShellLoad[]>([]);
+const DEFAULT_SHELL_EDITOR = {
+    name: "",
+    loadName: "",
+    launchSiteName: "",
+    headColour: Colour.BrightYellow,
+    trail1Colour: Colour.DarkOrange,
+    trail2Colour: Colour.DarkOrange,
+    isBigHead: false,
+    trail: false,
+    trailDensity: 0.5,
+    trailWidth: 3,
+    azimuth: 0,
+    tilt: 0,
+    timeTillStall: 70,
+    delay: 70,
+    randomness: 0,
+    syncHeightAndDelay: true,
+    ascendEffects: [] as ShellLoad[],
+    selectedAscendEffectIndex: undefined as number | undefined,
+    showAscendEffectsPanel: false,
+    selectedIndex: undefined as number | undefined
+};
+
+const selectedShellIndex = store<number | undefined>(DEFAULT_SHELL_EDITOR.selectedIndex);
+const editedShellName = store(DEFAULT_SHELL_EDITOR.name);
+const selectedLoadName = store(DEFAULT_SHELL_EDITOR.loadName);
+const selectedLaunchSiteName = store(DEFAULT_SHELL_EDITOR.launchSiteName);
+const headColour = store<Colour>(DEFAULT_SHELL_EDITOR.headColour);
+const trail1Colour = store<Colour>(DEFAULT_SHELL_EDITOR.trail1Colour);
+const trail2Colour = store<Colour>(DEFAULT_SHELL_EDITOR.trail2Colour);
+const isBigHead = store(DEFAULT_SHELL_EDITOR.isBigHead);
+const trail = store(DEFAULT_SHELL_EDITOR.trail);
+const trailDensity = store(DEFAULT_SHELL_EDITOR.trailDensity);
+const trailWidth = store(DEFAULT_SHELL_EDITOR.trailWidth);
+const azimuth = store(DEFAULT_SHELL_EDITOR.azimuth);
+const tilt = store(DEFAULT_SHELL_EDITOR.tilt);
+const timeTillStall = store(DEFAULT_SHELL_EDITOR.timeTillStall);
+const delay = store(DEFAULT_SHELL_EDITOR.delay);
+const randomness = store(DEFAULT_SHELL_EDITOR.randomness);
+const syncHeightAndDelay = store(DEFAULT_SHELL_EDITOR.syncHeightAndDelay);
+const ascendEffectsStore = store<ShellLoad[]>(DEFAULT_SHELL_EDITOR.ascendEffects);
 const ascendEffectsRevision = store(0);
-const selectedAscendEffectIndex = store<number | undefined>(undefined);
-const showAscendEffectsPanel = store(false);
+const selectedAscendEffectIndex = store<number | undefined>(DEFAULT_SHELL_EDITOR.selectedAscendEffectIndex);
+const showAscendEffectsPanel = store(DEFAULT_SHELL_EDITOR.showAscendEffectsPanel);
 
 const shellsSearch = store("");
 const filteredShells = compute(shellsSearch, definedShells, () => {
@@ -62,8 +74,7 @@ const filteredShells = compute(shellsSearch, definedShells, () => {
     return all.filter(s => s.name.trim().toLowerCase().indexOf(q) === 0);
 });
 
-interface ShellSizePreset
-{
+interface ShellSizePreset {
     label: string;
     height: number;
     delay: number;
@@ -78,8 +89,7 @@ const shellSizePresets: ShellSizePreset[] = [
     { label: "XL", height: 115, delay: 115, isBigHead: true, trail: true }
 ];
 
-function applyShellSizePreset(preset: ShellSizePreset): void
-{
+function applyShellSizePreset(preset: ShellSizePreset): void {
     timeTillStall.set(preset.height);
     delay.set(preset.delay);
     isBigHead.set(preset.isBigHead);
@@ -87,79 +97,48 @@ function applyShellSizePreset(preset: ShellSizePreset): void
     syncShellToEditFromEditor();
 }
 
-function setHeightValue(value: number): void
-{
+function setHeightValue(value: number): void {
     timeTillStall.set(value);
-    if (syncHeightAndDelay.get())
-    {
+    if (syncHeightAndDelay.get()) {
         delay.set(value);
     }
 
     syncShellToEditFromEditor();
 }
 
-function setDelayValue(value: number): void
-{
+function setDelayValue(value: number): void {
     delay.set(value);
-    if (syncHeightAndDelay.get())
-    {
+    if (syncHeightAndDelay.get()) {
         timeTillStall.set(value);
     }
 
     syncShellToEditFromEditor();
 }
 
-function cloneShell(source: Shell): Shell
-{
-    const clonedPosition = typeof source.position === "string"
-        ? source.position
-        : { x: source.position.x, y: source.position.y, z: source.position.z };
-
-    return new Shell(
-        source.name,
-        new ShellLoad(source.load.loadName, source.load.timeTillExplode),
-        source.ascendEffects.map(effect => new ShellLoad(effect.loadName, effect.timeTillExplode)),
-        source.headType,
-        source.trail,
-        source.trailDensity,
-        source.trailWidth,
-        clonedPosition,
-        new ShellColours(source.shellColours.headColour, source.shellColours.trail1Colour, source.shellColours.trail2Colour),
-        source.timeTillStall,
-        { x: source.velocity.x, y: source.velocity.y, z: source.velocity.z },
-        source.delay,
-        source.azimuth,
-        source.tilt,
-        source.factorySource
-    );
-}
-
-function getFallbackShellName(): string
-{
+function getFallbackShellName(): string {
     return `Shell ${definedShells.get().length + 1}`;
 }
 
-function createEmptyShell(name: string = ""): Shell
-{
+function createEmptyShell(name: string = ""): Shell {
     return Shell.fromGround(
         name,
         new ShellLoad("", ShellLoad.explodeAtEnd),
         [],
-        ShotHeadType.Small,
-        false,
-        0.5,
-        3,
-        "",
-        new ShellColours(Colour.BrightYellow, Colour.DarkOrange, Colour.DarkOrange),
-        70,
-        70,
-        0,
-        0
+        DEFAULT_SHELL_EDITOR.isBigHead ? ShotHeadType.Big : ShotHeadType.Small,
+        DEFAULT_SHELL_EDITOR.trail,
+        DEFAULT_SHELL_EDITOR.trailDensity,
+        DEFAULT_SHELL_EDITOR.trailWidth,
+        DEFAULT_SHELL_EDITOR.launchSiteName,
+        new ShellColours(DEFAULT_SHELL_EDITOR.headColour, DEFAULT_SHELL_EDITOR.trail1Colour, DEFAULT_SHELL_EDITOR.trail2Colour),
+        DEFAULT_SHELL_EDITOR.timeTillStall,
+        DEFAULT_SHELL_EDITOR.delay,
+        DEFAULT_SHELL_EDITOR.azimuth,
+        DEFAULT_SHELL_EDITOR.tilt,
+        DEFAULT_SHELL_EDITOR.randomness
     );
 }
 
-function syncShellToEditFromEditor(): void
-{
+function syncShellToEditFromEditor(): void {
     const currentName = editedShellName.get().trim();
     const currentLoadName = selectedLoadName.get().trim();
 
@@ -176,41 +155,133 @@ function syncShellToEditFromEditor(): void
     shell.tilt = tilt.get();
     shell.timeTillStall = timeTillStall.get();
     shell.delay = delay.get();
+    shell.randomness = randomness.get();
     setShellToEdit(shell);
 }
 
-function resetShellEditor(): void
-{
-    editedShellName.set("");
-    selectedLoadName.set("");
-    selectedLaunchSiteName.set("");
-    headColour.set(Colour.BrightYellow);
-    trail1Colour.set(Colour.DarkOrange);
-    trail2Colour.set(Colour.DarkOrange);
-    isBigHead.set(false);
-    trail.set(false);
-    trailDensity.set(0.5);
-    trailWidth.set(3);
-    azimuth.set(0);
-    tilt.set(0);
-    timeTillStall.set(70);
-    delay.set(70);
+export function getShellEditorState(): SerializedShellEditorState {
+    syncShellToEditFromEditor();
+    return {
+        shell: getShellToEdit()?.toParkData(),
+        syncHeightAndDelay: syncHeightAndDelay.get()
+    };
+}
+
+export function restoreShellEditorState(state?: SerializedShellEditorState): void {
+    if (!state || !state.shell) {
+        resetShellEditor();
+        return;
+    }
+    applyShellToEditor(Shell.fromParkData(state.shell, decodeEffect));
+    selectedShellIndex.set(DEFAULT_SHELL_EDITOR.selectedIndex);
+    showAscendEffectsPanel.set(DEFAULT_SHELL_EDITOR.showAscendEffectsPanel);
+    syncHeightAndDelay.set(typeof state.syncHeightAndDelay === "boolean" ? state.syncHeightAndDelay : DEFAULT_SHELL_EDITOR.syncHeightAndDelay);
+}
+
+export function resetShellEditor(): void {
+    editedShellName.set(DEFAULT_SHELL_EDITOR.name);
+    selectedLoadName.set(DEFAULT_SHELL_EDITOR.loadName);
+    selectedLaunchSiteName.set(DEFAULT_SHELL_EDITOR.launchSiteName);
+    headColour.set(DEFAULT_SHELL_EDITOR.headColour);
+    trail1Colour.set(DEFAULT_SHELL_EDITOR.trail1Colour);
+    trail2Colour.set(DEFAULT_SHELL_EDITOR.trail2Colour);
+    isBigHead.set(DEFAULT_SHELL_EDITOR.isBigHead);
+    trail.set(DEFAULT_SHELL_EDITOR.trail);
+    trailDensity.set(DEFAULT_SHELL_EDITOR.trailDensity);
+    trailWidth.set(DEFAULT_SHELL_EDITOR.trailWidth);
+    azimuth.set(DEFAULT_SHELL_EDITOR.azimuth);
+    tilt.set(DEFAULT_SHELL_EDITOR.tilt);
+    timeTillStall.set(DEFAULT_SHELL_EDITOR.timeTillStall);
+    delay.set(DEFAULT_SHELL_EDITOR.delay);
+    randomness.set(DEFAULT_SHELL_EDITOR.randomness);
+    syncHeightAndDelay.set(DEFAULT_SHELL_EDITOR.syncHeightAndDelay);
     ascendEffectsStore.set([]);
     ascendEffectsRevision.set(0);
-    selectedAscendEffectIndex.set(undefined);
-    selectedShellIndex.set(undefined);
+    selectedAscendEffectIndex.set(DEFAULT_SHELL_EDITOR.selectedAscendEffectIndex);
+    showAscendEffectsPanel.set(DEFAULT_SHELL_EDITOR.showAscendEffectsPanel);
+    selectedShellIndex.set(DEFAULT_SHELL_EDITOR.selectedIndex);
     setShellToEdit(createEmptyShell());
 }
 
-function loadSelectedShell(index: number): void
-{
-    const shell = definedShells.get()[index];
-    if (!shell)
-    {
-        return;
+export function isShellEditorDirty(): boolean {
+    const currentName = editedShellName.get().trim();
+    const currentLoad = selectedLoadName.get().trim();
+    const currentSite = selectedLaunchSiteName.get().trim();
+    const currentHeadColour = headColour.get();
+    const currentTrail1Colour = trail1Colour.get();
+    const currentTrail2Colour = trail2Colour.get();
+    const currentIsBigHead = isBigHead.get();
+    const currentTrail = trail.get();
+    const currentTrailDensity = trailDensity.get();
+    const currentTrailWidth = trailWidth.get();
+    const currentAzimuth = azimuth.get();
+    const currentTilt = tilt.get();
+    const currentTimeTillStall = timeTillStall.get();
+    const currentDelay = delay.get();
+    const currentRandomness = randomness.get();
+    const currentAscendEffects = ascendEffectsStore.get();
+
+    if (!currentName) {
+        return (
+            currentLoad !== DEFAULT_SHELL_EDITOR.loadName ||
+            currentSite !== DEFAULT_SHELL_EDITOR.launchSiteName ||
+            currentHeadColour !== DEFAULT_SHELL_EDITOR.headColour ||
+            currentTrail1Colour !== DEFAULT_SHELL_EDITOR.trail1Colour ||
+            currentTrail2Colour !== DEFAULT_SHELL_EDITOR.trail2Colour ||
+            currentIsBigHead !== DEFAULT_SHELL_EDITOR.isBigHead ||
+            currentTrail !== DEFAULT_SHELL_EDITOR.trail ||
+            currentTrailDensity !== DEFAULT_SHELL_EDITOR.trailDensity ||
+            currentTrailWidth !== DEFAULT_SHELL_EDITOR.trailWidth ||
+            currentAzimuth !== DEFAULT_SHELL_EDITOR.azimuth ||
+            currentTilt !== DEFAULT_SHELL_EDITOR.tilt ||
+            currentTimeTillStall !== DEFAULT_SHELL_EDITOR.timeTillStall ||
+            currentDelay !== DEFAULT_SHELL_EDITOR.delay ||
+            currentRandomness !== DEFAULT_SHELL_EDITOR.randomness ||
+            currentAscendEffects.length !== DEFAULT_SHELL_EDITOR.ascendEffects.length
+        );
     }
 
-    selectedShellIndex.set(index);
+    const saved = getShellMap().get(currentName);
+    if (!saved) {
+        return true;
+    }
+
+    const savedSite = typeof saved.position === "string" ? saved.position : "";
+    const savedIsBigHead = saved.headType === ShotHeadType.Big;
+
+    if (
+        saved.load.loadName !== currentLoad ||
+        savedSite !== currentSite ||
+        saved.shellColours.headColour !== currentHeadColour ||
+        saved.shellColours.trail1Colour !== currentTrail1Colour ||
+        saved.shellColours.trail2Colour !== currentTrail2Colour ||
+        savedIsBigHead !== currentIsBigHead ||
+        saved.trail !== currentTrail ||
+        saved.trailDensity !== currentTrailDensity ||
+        saved.trailWidth !== currentTrailWidth ||
+        saved.azimuth !== currentAzimuth ||
+        saved.tilt !== currentTilt ||
+        saved.timeTillStall !== currentTimeTillStall ||
+        saved.delay !== currentDelay ||
+        saved.randomness !== currentRandomness ||
+        saved.ascendEffects.length !== currentAscendEffects.length
+    ) {
+        return true;
+    }
+
+    for (let i = 0; i < saved.ascendEffects.length; i++) {
+        if (
+            saved.ascendEffects[i].loadName !== currentAscendEffects[i].loadName ||
+            saved.ascendEffects[i].timeTillExplode !== currentAscendEffects[i].timeTillExplode
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function applyShellToEditor(shell: Shell): void {
     editedShellName.set(shell.name);
     selectedLoadName.set(shell.load.loadName);
     selectedLaunchSiteName.set(typeof shell.position === "string" ? shell.position : "");
@@ -225,23 +296,31 @@ function loadSelectedShell(index: number): void
     tilt.set(shell.tilt);
     timeTillStall.set(shell.timeTillStall);
     delay.set(shell.delay);
+    randomness.set(shell.randomness);
     ascendEffectsStore.set(shell.ascendEffects.map(e => new ShellLoad(e.loadName, e.timeTillExplode)));
     ascendEffectsRevision.set(ascendEffectsRevision.get() + 1);
     selectedAscendEffectIndex.set(undefined);
-    setShellToEdit(cloneShell(shell));
+    setShellToEdit(cloneShellBlueprint(shell));
 }
 
-function validateShellEditor(): boolean
-{
-    if (!selectedLoadName.get().trim())
-    {
+function loadSelectedShell(index: number): void {
+    const shell = definedShells.get()[index];
+    if (!shell) {
+        return;
+    }
+
+    selectedShellIndex.set(index);
+    applyShellToEditor(shell);
+}
+
+function validateShellEditor(): boolean {
+    if (!selectedLoadName.get().trim()) {
         if (typeof ui !== "undefined" && typeof ui.showError === "function")
             ui.showError("Invalid shell", "A shell must have a selected load.");
         return false;
     }
 
-    if (!selectedLaunchSiteName.get().trim())
-    {
+    if (!selectedLaunchSiteName.get().trim()) {
         if (typeof ui !== "undefined" && typeof ui.showError === "function")
             ui.showError("Invalid shell", "A shell must have a selected launch site.");
         return false;
@@ -249,8 +328,7 @@ function validateShellEditor(): boolean
 
     const currentDelay = delay.get();
     const invalidAscendEffect = ascendEffectsStore.get().find((e: ShellLoad) => e.timeTillExplode > currentDelay);
-    if (invalidAscendEffect)
-    {
+    if (invalidAscendEffect) {
         if (typeof ui !== "undefined" && typeof ui.showError === "function")
             ui.showError("Invalid shell", `Ascend load "${invalidAscendEffect.loadName}" fires at delay ${invalidAscendEffect.timeTillExplode}, which exceeds the shell delay of ${currentDelay}.`);
         return false;
@@ -259,18 +337,15 @@ function validateShellEditor(): boolean
     return true;
 }
 
-function addOrUpdateShell(): void
-{
+function addOrUpdateShell(): void {
     if (!validateShellEditor()) return;
 
     const trimmedName = editedShellName.get().trim();
     const nextName = trimmedName || getFallbackShellName();
     const loadName = selectedLoadName.get().trim();
 
-    if (!persistent.resolveLoad(loadName))
-    {
-        if (typeof ui !== "undefined" && typeof ui.showError === "function")
-        {
+    if (!persistent.resolveLoad(loadName)) {
+        if (typeof ui !== "undefined" && typeof ui.showError === "function") {
             ui.showError("Invalid shell", "Selected load no longer exists.");
         }
         return;
@@ -289,38 +364,33 @@ function addOrUpdateShell(): void
     nextShell.tilt = tilt.get();
     nextShell.timeTillStall = timeTillStall.get();
     nextShell.delay = delay.get();
-    const updated = [...getShellList().map(cloneShell)];
+    nextShell.randomness = randomness.get();
+    const updated = [...getShellList().map(cloneShellBlueprint)];
     let existingIndex = -1;
-    for (let index = 0; index < updated.length; index++)
-    {
-        if (updated[index].name === nextName)
-        {
+    for (let index = 0; index < updated.length; index++) {
+        if (updated[index].name === nextName) {
             existingIndex = index;
             break;
         }
     }
 
-    if (existingIndex >= 0)
-    {
+    if (existingIndex >= 0) {
         updated[existingIndex] = nextShell;
         selectedShellIndex.set(existingIndex);
     }
-    else
-    {
+    else {
         updated.push(nextShell);
         selectedShellIndex.set(updated.length - 1);
     }
 
-    setShellList(updated.map(cloneShell));
+    setShellList(updated.map(cloneShellBlueprint));
     editedShellName.set(nextName);
-    setShellToEdit(cloneShell(nextShell));
+    setShellToEdit(cloneShellBlueprint(nextShell));
 }
 
-function deleteSelectedShell(): void
-{
+function deleteSelectedShell(): void {
     const selectedIndex = selectedShellIndex.get();
-    if (typeof selectedIndex !== "number")
-    {
+    if (typeof selectedIndex !== "number") {
         return;
     }
 
@@ -330,8 +400,8 @@ function deleteSelectedShell(): void
     const usages = findShellUsages(shell.name);
 
     const doDelete = () => {
-        const updated = getShellList().filter((_, index) => index !== selectedIndex).map(cloneShell);
-        setShellList(updated.map(cloneShell));
+        const updated = getShellList().filter((_, index) => index !== selectedIndex).map(cloneShellBlueprint);
+        setShellList(updated.map(cloneShellBlueprint));
         resetShellEditor();
     };
 
@@ -351,11 +421,9 @@ function deleteSelectedShell(): void
     doDelete();
 }
 
-function onTestShellsButtonClick(): void
-{
+function onTestShellsButtonClick(): void {
     const shell = getShellToEdit();
-    if (!shell)
-    {
+    if (!shell) {
         return;
     }
     if (!validateShellEditor()) return;
@@ -363,31 +431,27 @@ function onTestShellsButtonClick(): void
     // Validate all named references before testing
     const ctx = buildValidationContext();
     const issues: ValidationIssue[] = [];
-    if (!shell.isValid(ctx, issues, `Shell "${shell.name}"`))
-    {
-        if (typeof ui !== "undefined" && typeof ui.showError === "function")
-        {
+    if (!shell.isValid(ctx, issues, `Shell "${shell.name}"`)) {
+        if (typeof ui !== "undefined" && typeof ui.showError === "function") {
             ui.showError("Invalid shell", formatValidationIssues(issues));
         }
         return;
     }
 
-    LoadFireworks(cloneShell(shell));
+    LoadFireworks(cloneShellBlueprint(shell));
     ResetCounts();
     Play(true);
+    beginPaletteTest(shell.getDuration());
 }
 
-function deleteSelectedAscendEffect(): void
-{
+function deleteSelectedAscendEffect(): void {
     const index = selectedAscendEffectIndex.get();
-    if (typeof index !== "number")
-    {
+    if (typeof index !== "number") {
         return;
     }
 
     const effects = [...ascendEffectsStore.get()];
-    if (index < 0 || index >= effects.length)
-    {
+    if (index < 0 || index >= effects.length) {
         selectedAscendEffectIndex.set(undefined);
         return;
     }
@@ -399,8 +463,7 @@ function deleteSelectedAscendEffect(): void
     syncShellToEditFromEditor();
 }
 
-function openAddAscendEffectWindow(): void
-{
+function openAddAscendEffectWindow(): void {
     const selectedAscendLoad = store<Load | undefined>(undefined);
     const prevEffects = ascendEffectsStore.get();
     const minDelay = prevEffects.length > 0 ? prevEffects[prevEffects.length - 1].timeTillExplode : 0;
@@ -418,10 +481,10 @@ function openAddAscendEffectWindow(): void
     let handle: OpenWindow | undefined;
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
-    const popup = window({
-        title: "Add Ascend Load",
+    handle = openPopupWindow("shell-add-ascend-load", {
+        title: "Add Ascend Load to Shell",
         width: 300,
-        height: 280,
+        height: 266,
         padding: 8,
         position,
         direction: LayoutDirection.Vertical,
@@ -436,43 +499,49 @@ function openAddAscendEffectWindow(): void
             listview({
                 items: compute(filteredLoads, loads => loads.map(load => [load.name, load.GetSpriteString()])),
                 columns: [{ header: "Load", width: "1w" },
-                          { header: "Icons", width: "1w" }],
+                { header: "Icons", width: "1w" }],
                 width: 260,
                 height: 130,
                 canSelect: true,
                 onClick: row => {
                     const load = filteredLoads.get()[row];
-                    if (load)
-                    {
+                    if (load) {
                         selectedAscendLoad.set(cloneLoad(load));
                     }
                 }
             }),
             label({ text: compute(selectedAscendLoad, l => l ? `Selected: ${l.name}` : "Selected: none") }),
-            flexible({
-                direction: LayoutDirection.Horizontal,
-                content: [
-                    label({ text: "Delay", width: 50 }),
-                    spinner({
-                        value: ascendDelay,
-                        onChange: value => ascendDelay.set(value),
-                        width: 100,
-                        step: 1,
-                        minimum: minDelay,
-                        maximum: compute(delay, t => t)
-                    })
-                ]
+            numberInputSpinner({
+                labelText: "Delay",
+                labelWidth: 50,
+                valueStore: ascendDelay,
+                onChange: value => ascendDelay.set(value),
+                width: 100,
+                step: 1,
+                minimum: minDelay,
+                maximum: compute(delay, t => t)
             }),
+             label({ text: "", height: 4 }),
             flexible({
                 direction: LayoutDirection.Horizontal,
                 content: [
-                    button({
-                        text: "Add",
+                    label({ text: "", width: "1w" }),
+                    colouredButton({
+                        text: "Cancel",
                         width: 70,
+                        height: 22,
+                        colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
+                        onClick: () => handle?.close()
+                    }),
+                    label({ text: "", width: "1w" }),
+                    colouredButton({
+                        text: "{WHITE}Add",
+                        width: 70,
+                        height: 22,
+                        colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
                         onClick: () => {
                             const load = selectedAscendLoad.get();
-                            if (!load)
-                            {
+                            if (!load) {
                                 return;
                             }
 
@@ -484,33 +553,24 @@ function openAddAscendEffectWindow(): void
                             handle?.close();
                         }
                     }),
-                    button({
-                        text: "Cancel",
-                        width: 70,
-                        onClick: () => handle?.close()
-                    })
+                    label({ text: "", width: "1w" })
                 ]
             })
         ]
     });
-
-    handle = popup.open();
 }
 
-function openShellLoadSelectionWindow(onSelect: (load: Load) => void): void
-{
+function openShellLoadSelectionWindow(onSelect: (load: Load) => void): void {
     const search = store("");
     const filteredLoads = compute(search, query => {
         const normalizedQuery = query.trim().toLowerCase();
         return getLoadList().filter(load => {
             const name = load.name.trim();
-            if (!name)
-            {
+            if (!name) {
                 return false;
             }
 
-            if (!normalizedQuery)
-            {
+            if (!normalizedQuery) {
                 return true;
             }
 
@@ -521,8 +581,8 @@ function openShellLoadSelectionWindow(onSelect: (load: Load) => void): void
     let handle: OpenWindow | undefined;
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
-    const selectorWindow = window({
-        title: "Select Load",
+    handle = openPopupWindow("shell-select-load", {
+        title: "Select Load For Shell",
         width: 300,
         height: 250,
         padding: 8,
@@ -539,15 +599,14 @@ function openShellLoadSelectionWindow(onSelect: (load: Load) => void): void
             listview({
                 items: compute(filteredLoads, loads => loads.map(load => [load.name, load.GetSpriteString()])),
                 columns: [{ header: "Name", width: "1w" },
-                          { header: "Icons", width: "1w" }
+                { header: "Icons", width: "1w" }
                 ],
                 width: 260,
                 height: 150,
                 canSelect: true,
                 onClick: row => {
                     const selected = filteredLoads.get()[row];
-                    if (!selected)
-                    {
+                    if (!selected) {
                         return;
                     }
 
@@ -555,51 +614,33 @@ function openShellLoadSelectionWindow(onSelect: (load: Load) => void): void
                     handle?.close();
                 }
             }),
-            button({
+            colouredButton({
                 text: "Close",
                 width: 70,
+                height: 22,
+                colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
                 onClick: () => handle?.close()
             })
         ]
     });
-
-    handle = selectorWindow.open();
 }
 
-export function expandAcsendEffectsPanel(): void
-{
+export function expandAcsendEffectsPanel(): void {
     showAscendEffectsPanel.set(true);
     resizeFireworksWindow(640, 540);
 }
 
-export function collapseAscendEffectsPanel(): void
-{
+export function collapseAscendEffectsPanel(): void {
     showAscendEffectsPanel.set(false);
     resizeFireworksWindow(640, 420);
 }
 
-export function createShellsTab()
-{
+export function createShellsTab() {
     const currentShell = getShellToEdit();
-    if (currentShell)
-    {
-        editedShellName.set(currentShell.name);
-        selectedLoadName.set(currentShell.load.loadName);
-        selectedLaunchSiteName.set(typeof currentShell.position === "string" ? currentShell.position : "");
-        headColour.set(currentShell.shellColours.headColour);
-        trail1Colour.set(currentShell.shellColours.trail1Colour);
-        trail2Colour.set(currentShell.shellColours.trail2Colour);
-        isBigHead.set(currentShell.headType === ShotHeadType.Big);
-        trail.set(currentShell.trail);
-        trailDensity.set(currentShell.trailDensity);
-        trailWidth.set(currentShell.trailWidth);
-        azimuth.set(currentShell.azimuth);
-        tilt.set(currentShell.tilt);
-        timeTillStall.set(currentShell.timeTillStall);
-        delay.set(currentShell.delay);
+    if (currentShell) {
+        applyShellToEditor(currentShell);
     }
-    else
-    {
+    else {
         setShellToEdit(createEmptyShell());
     }
 
@@ -612,12 +653,12 @@ export function createShellsTab()
                     content: [
                         box({
                             width: 390,
-                            height: compute(showAscendEffectsPanel, show => show ? 450 : 310),
+                            height: compute(showAscendEffectsPanel, show => show ? 455 : 315),
                             padding: 6,
                             text: "Current Shell",
                             content: flexible({
                                 direction: LayoutDirection.Vertical,
-                                height: compute(showAscendEffectsPanel, show => show ? 420 : 290),
+                                height: compute(showAscendEffectsPanel, show => show ? 425 : 295),
                                 content: [
                                     label({ text: "Name" }),
                                     textbox({
@@ -632,11 +673,12 @@ export function createShellsTab()
                                     flexible({
                                         direction: LayoutDirection.Horizontal,
                                         content: [
-                                            label({ text: compute(selectedLoadName, name => `Main Load: ${name.trim() + "   " +  (persistent.GetLoadByName(name)?.GetSpriteString() || "[Empty]")}`), width: "1w" }),
-                                            button({
+                                            label({ text: compute(selectedLoadName, name => `Main Load: ${name.trim() + "   " + (persistent.GetLoadByName(name)?.GetSpriteString() || "[Empty]")}`), width: "1w" }),
+                                            colouredButton({
                                                 text: "Select Main Load",
                                                 width: 120,
-                                                height: 20,
+                                                height: 20,                                                
+                                                colour: Colour.LightBrown, colourDark: Colour.SaturatedBrown, colourLight: Colour.SaturatedBrownLight,
                                                 onClick: () => openShellLoadSelectionWindow(load => {
                                                     selectedLoadName.set(load.name);
                                                     syncShellToEditFromEditor();
@@ -644,23 +686,27 @@ export function createShellsTab()
                                             })
                                         ]
                                     }),
-                                    button({
+                                    colouredButton({
                                         text: "Add Ascend Loads",
                                         width: 120,
+                                        height: 20,
+                                        colour: Colour.LightBrown, colourDark: Colour.SaturatedBrown, colourLight: Colour.SaturatedBrownLight,
                                         visibility: compute(showAscendEffectsPanel, show => show ? "none" : "visible"),
                                         onClick: () => expandAcsendEffectsPanel()
                                     }),
-                                groupbox({
-                                    text: "Ascend Loads",
-                                    visibility: compute(showAscendEffectsPanel, show => show ? "visible" : "none"),
-                                    height: compute(showAscendEffectsPanel, show => show ? 155 : 0),
-                                    content: [
-                                        flexible({
-                                            direction: LayoutDirection.Horizontal,
-                                            content: [
-                                                    button({
+                                    groupbox({
+                                        text: "Ascend Loads",
+                                        visibility: compute(showAscendEffectsPanel, show => show ? "visible" : "none"),
+                                        height: compute(showAscendEffectsPanel, show => show ? 155 : 0),
+                                        content: [
+                                            flexible({
+                                                direction: LayoutDirection.Horizontal,
+                                                content: [
+                                                    colouredButton({
                                                         text: "Hide",
                                                         width: 50,
+                                                        height: 18,
+                                                        colour: Colour.LightBrown, colourDark: Colour.SaturatedBrown, colourLight: Colour.SaturatedBrownLight,
                                                         visibility: compute(showAscendEffectsPanel, show => show ? "visible" : "none"),
                                                         onClick: () => { collapseAscendEffectsPanel(); }
                                                     })
@@ -682,17 +728,17 @@ export function createShellsTab()
                                             flexible({
                                                 direction: LayoutDirection.Horizontal,
                                                 content: [
-                                                    button({
-                                                        text: "Add",
+                                                    colouredButton({
+                                                        text: "{WHITE}Add",
                                                         width: 70,
-                                                visibility: compute(showAscendEffectsPanel, show => show ? "visible" : "none"),
+                                                        height: 20,
+                                                        colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
+                                                        visibility: compute(showAscendEffectsPanel, show => show ? "visible" : "none"),
                                                         onClick: () => {
                                                             const effects = ascendEffectsStore.get();
                                                             const currentDelay = delay.get();
-                                                            if (effects.length > 0 && effects[effects.length - 1].timeTillExplode >= currentDelay)
-                                                            {
-                                                                if (typeof ui !== "undefined" && typeof ui.showError === "function")
-                                                                {
+                                                            if (effects.length > 0 && effects[effects.length - 1].timeTillExplode >= currentDelay) {
+                                                                if (typeof ui !== "undefined" && typeof ui.showError === "function") {
                                                                     ui.showError("Invalid ascend load", `The last ascend load already fires at delay ${effects[effects.length - 1].timeTillExplode}, which is at or beyond the shell delay of ${currentDelay}.`);
                                                                 }
                                                                 return;
@@ -700,10 +746,12 @@ export function createShellsTab()
                                                             openAddAscendEffectWindow();
                                                         }
                                                     }),
-                                                    button({
-                                                        text: "Delete",
+                                                    colouredButton({
+                                                        text: "{WHITE}Delete",
                                                         width: 70,
-                                                visibility: compute(showAscendEffectsPanel, show => show ? "visible" : "none"),
+                                                        height: 20,
+                                                        colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
+                                                        visibility: compute(showAscendEffectsPanel, show => show ? "visible" : "none"),
                                                         onClick: deleteSelectedAscendEffect
                                                     })
                                                 ]
@@ -723,12 +771,10 @@ export function createShellsTab()
                                             return index >= 0 ? index + 1 : 0;
                                         }),
                                         onChange: index => {
-                                            if (index <= 0)
-                                            {
+                                            if (index <= 0) {
                                                 selectedLaunchSiteName.set("");
                                             }
-                                            else
-                                            {
+                                            else {
                                                 const site = launchSites[index - 1];
                                                 selectedLaunchSiteName.set(site ? site.name : "");
                                             }
@@ -773,28 +819,36 @@ export function createShellsTab()
                                             })
                                         ]
                                     }),
-                                    checkbox({
-                                        text: "Big head type",
-                                        isChecked: isBigHead,
-                                        onChange: value => {
-                                            isBigHead.set(value);
-                                            syncShellToEditFromEditor();
-                                        }
-                                    }),
-                                    checkbox({
-                                        text: "Trail",
-                                        isChecked: trail,
-                                        onChange: value => {
-                                            trail.set(value);
-                                            syncShellToEditFromEditor();
-                                        }
+                                    flexible({
+                                        direction: LayoutDirection.Horizontal,
+                                        content: [
+                                            checkbox({
+                                                text: "Big head type",
+                                                isChecked: isBigHead,
+                                                width: 120,
+                                                onChange: value => {
+                                                    isBigHead.set(value);
+                                                    syncShellToEditFromEditor();
+                                                }
+                                            }),
+                                             checkbox({
+                                                text: "Trail",
+                                                isChecked: trail,
+                                                width: 80,
+                                                onChange: value => {
+                                                    trail.set(value);
+                                                    syncShellToEditFromEditor();
+                                                }
+                                            }),                                            
+                                        ]
                                     }),
                                     flexible({
                                         direction: LayoutDirection.Horizontal,
                                         content: [
-                                            label({ text: "Trail Density", width: 80 }),
-                                            spinner({
-                                                value: trailDensity,
+                                            numberInputSpinner({
+                                                labelText: "Trail Density",
+                                                labelWidth: 80,
+                                                valueStore: trailDensity,
                                                 onChange: value => {
                                                     trailDensity.set(value);
                                                     syncShellToEditFromEditor();
@@ -804,9 +858,10 @@ export function createShellsTab()
                                                 minimum: 0,
                                                 maximum: 1
                                             }),
-                                            label({ text: "Trail Width", width: 80 }),
-                                            spinner({
-                                                value: trailWidth,
+                                            numberInputSpinner({
+                                                labelText: "Trail Width",
+                                                labelWidth: 80,
+                                                valueStore: trailWidth,
                                                 onChange: value => {
                                                     trailWidth.set(value);
                                                     syncShellToEditFromEditor();
@@ -820,10 +875,11 @@ export function createShellsTab()
                                     }),
                                     flexible({
                                         direction: LayoutDirection.Horizontal,
-                                        content: [                                            
-                                            label({ text: "Tilt", width: 80 }),
-                                            spinner({
-                                                value: tilt,
+                                        content: [
+                                            numberInputSpinner({
+                                                labelText: "Tilt",
+                                                labelWidth: 80,
+                                                valueStore: tilt,
                                                 onChange: value => {
                                                     tilt.set(value);
                                                     syncShellToEditFromEditor();
@@ -833,9 +889,10 @@ export function createShellsTab()
                                                 minimum: 0,
                                                 maximum: 45
                                             }),
-                                            label({ text: "Azimuth", width: 80 }),
-                                            spinner({
-                                                value: azimuth,
+                                            numberInputSpinner({
+                                                labelText: "Azimuth",
+                                                labelWidth: 80,
+                                                valueStore: azimuth,
                                                 onChange: value => {
                                                     azimuth.set(value);
                                                     syncShellToEditFromEditor();
@@ -844,24 +901,26 @@ export function createShellsTab()
                                                 step: 2,
                                                 minimum: -360,
                                                 maximum: 360
-                                            }),
+                                            })
                                         ]
                                     }),
                                     flexible({
                                         direction: LayoutDirection.Horizontal,
                                         content: [
-                                            label({ text: "Height", width: 80 }),
-                                            spinner({
-                                                value: timeTillStall,
+                                            numberInputSpinner({
+                                                labelText: "Height",
+                                                labelWidth: 80,
+                                                valueStore: timeTillStall,
                                                 onChange: value => setHeightValue(value),
                                                 width: 80,
                                                 step: 1,
                                                 minimum: 0,
                                                 maximum: 130
                                             }),
-                                            label({ text: "Delay", width: 80 }),
-                                            spinner({
-                                                value: delay,
+                                            numberInputSpinner({
+                                                labelText: "Delay",
+                                                labelWidth: 80,
+                                                valueStore: delay,
                                                 onChange: value => setDelayValue(value),
                                                 width: 80,
                                                 step: 1,
@@ -873,57 +932,83 @@ export function createShellsTab()
                                                 isChecked: syncHeightAndDelay,
                                                 onChange: value => {
                                                     syncHeightAndDelay.set(value);
-                                                    if (value)
-                                                    {
+                                                    if (value) {
                                                         delay.set(timeTillStall.get());
                                                         syncShellToEditFromEditor();
                                                     }
                                                 }
-                                            }),
+                                            })
+                                        ]
+                                    }),
+                                    flexible({
+                                        direction: LayoutDirection.Horizontal,
+                                        content: [
+                                            numberInputSpinner({
+                                                labelText: "Randomness",
+                                                labelWidth: 80,
+                                                valueStore: randomness,
+                                                onChange: value => {
+                                                    randomness.set(value);
+                                                    syncShellToEditFromEditor();
+                                                },
+                                                width: 80,
+                                                step: 1,
+                                                minimum: 0,
+                                                maximum: 20
+                                            })
                                         ]
                                     }),
                                     flexible({
                                         direction: LayoutDirection.Horizontal,
                                         content: [
                                             label({ text: "Preset", width: 80 }),
-                                            ...shellSizePresets.map(preset => button({
+                                            ...shellSizePresets.map(preset => colouredButton({
                                                 text: preset.label,
                                                 width: 28,
                                                 height: 20,
+                                                colour: Colour.LightBrown, colourDark: Colour.SaturatedBrown, colourLight: Colour.SaturatedBrownLight,
                                                 onClick: () => applyShellSizePreset(preset)
-                                            }))
+                                            })),
+											label({ text: "", width: "1w" }),
+                                            colouredButton({
+                                                text: "{WHITE}Test Shell",
+                                                width: 80,
+                                                height: 20,
+												colour: Colour.LightOrange, colourDark: Colour.DarkOrange, colourLight: Colour.OrangeLight,
+                                                onClick: onTestShellsButtonClick
+                                            })
                                         ]
                                     }),
                                     flexible({
                                         direction: LayoutDirection.Horizontal,
                                         content: [
-                                            button({
-                                                text: "Add Shell",
+                                            colouredButton({
+                                                text: "{WHITE}Add Shell",
                                                 width: 100,
                                                 height: 20,
+                                                colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
                                                 onClick: addOrUpdateShell
                                             }),
-                                            button({
-                                                text: "New",
+                                            colouredButton({
+                                                text: "{WHITE}New",
                                                 width: 50,
                                                 height: 20,
-                                                onClick: resetShellEditor
+                                                colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
+                                                onClick: () => confirmDiscardChanges(isShellEditorDirty, resetShellEditor)
                                             }),
-                                            button({
-                                                text: "Delete Shell",
+                                            colouredButton({
+                                                text: "{WHITE}Delete Shell",
                                                 width: 90,
                                                 height: 20,
+                                                colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
                                                 onClick: deleteSelectedShell
                                             }),
                                             label({ text: "", width: "1w" }),
-                                            button({ text: "Debugger", width: 70, height: 20, onClick: openDebuggerWindow }),
-                                            label({ text: "", width: "1w" }),
-                                            button({
-                                                text: "Test",
-                                                width: 45,
-                                                height: 20,
-                                                onClick: onTestShellsButtonClick
-                                            })
+                                            colouredButton({
+                                                text: "{BLACK}Debugger", width: 70, height: 20,
+                                                colour: Colour.Yellow, colourDark: Colour.DarkYellow, colourLight: Colour.BrightYellow,
+                                                onClick: openDebuggerWindow
+                                            }),
                                         ]
                                     })
                                 ]
@@ -946,7 +1031,7 @@ export function createShellsTab()
                                     listview({
                                         items: compute(filteredShells, shells => shells.map(shell => [shell.name, shell.GetSpriteString()])),
                                         columns: [{ header: "Name", width: "1w" },
-                                                  { header: "Icons", width: "1w" }
+                                        { header: "Icons", width: "1w" }
                                         ],
                                         width: 170,
                                         height: "1w",
@@ -963,7 +1048,12 @@ export function createShellsTab()
                                             const shell = filteredShells.get()[row];
                                             if (!shell) return;
                                             const fullIndex = definedShells.get().findIndex(s => s.name === shell.name);
-                                            if (fullIndex >= 0) { loadSelectedShell(fullIndex); collapseAscendEffectsPanel(); }
+                                            if (fullIndex >= 0) {
+                                                confirmDiscardChanges(isShellEditorDirty, () => {
+                                                    loadSelectedShell(fullIndex);
+                                                    collapseAscendEffectsPanel();
+                                                });
+                                            }
                                         }
                                     })
                                 ]

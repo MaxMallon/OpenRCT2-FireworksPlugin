@@ -1,8 +1,15 @@
 import { Colour, store } from "openrct2-flexui";
 import { CrackleEffect } from "../../fireworks/structures/effects/EmitterEffects/crackleEffect";
-import { createColourPickerRow, createEffectSizePresetRow, createNumberRow } from "./shared";
-import { openEffectWindow } from "./template";
+import { openEffectWindow, createColourPickerRow, createEffectSizePresetRow, createNumberRow, ExplanationParagraph  } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
+
+const explanation: ExplanationParagraph[] = [
+	{ text: "A short burst of crackling particles popping in and out.", height: 28 },
+	{ term: "Size", description: "Physical size of the effect.", height: 14 },
+	{ term: "Delay", description: "Number of ticks of delay before the\neffect starts", height: 28 },
+	{ term: "Colour", description: "Colour of the particles", height: 14 },
+	
+];
 
 export function openCrackleEffectWindow(effect: CrackleEffect | undefined, onSave: (effect: Effect) => void, onClose?: () => void): void
 {
@@ -26,9 +33,10 @@ export function openCrackleEffectWindow(effect: CrackleEffect | undefined, onSav
 	openEffectWindow({
 		title: "Crackle Effect",
 		width: 340,
-		height: 390,
+		height: 400,
 		saveText: effect ? "Update Effect" : "Add Effect",
 		onClose,
+		explanation,
 		content: [
 			createNumberRow("Size", physicalSize, 0, 6, 0.1),
 			createEffectSizePresetRow(sizePresets, preset => {

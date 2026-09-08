@@ -6,21 +6,29 @@ import { EmitterEffect, EffectType } from "../../Effect";
 
 export class TrailEffect extends EmitterEffect
 {
+	override readonly className: string = "TrailEffect";
+
 	constructor(timeLeft: number, public width: number, public density: number, public colour1: Colour, public colour2: Colour, public particle: CrashedVehicleParticle)
 	{
 		super(EffectType.Trail, timeLeft, timeLeft, 0 as unknown as LoadColours, { x: particle.x, y: particle.y, z: particle.z });
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "TrailEffect" }; }
+	override toParkData(): any { return { ...super.toParkData(), particle: undefined, particleId: this.particle?.id ?? -1 }; }
 
 	static fromParkData(effect: any): TrailEffect
 	{
-		return new TrailEffect(effect?.timeLeft ?? 0, effect?.width ?? 3, effect?.density ?? 0.5, effect?.colour1 ?? Colour.Invisible, effect?.colour2 ?? Colour.Invisible, effect?.particle);
+		const pos = effect?.position ?? { x: 0, y: 0, z: 0 };
+		const dummy = { x: pos.x, y: pos.y, z: pos.z } as CrashedVehicleParticle;
+		return new TrailEffect(effect?.timeLeft ?? 0, effect?.width ?? 3, effect?.density ?? 0.5, effect?.colour1 ?? Colour.Invisible, effect?.colour2 ?? Colour.Invisible, dummy);
 	}
 
 	override Make(_posOri: CoordsXYZ, _velocity: CoordsXYZ): EmitterEffect | undefined
 	{	
 		this.timeLeft--;
+		if (!this.particle) {
+			this.timeLeft = 0;
+			return undefined;
+		}
         let s = this.width;
         let r = Math.random() * this.density;
         if (this.timeLeft > 25){

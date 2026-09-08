@@ -1,8 +1,22 @@
 import { checkbox, store } from "openrct2-flexui";
 import { PalmEffect } from "../../fireworks/structures/effects/burstEffects/palmEffect";
-import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, normalizePatternSelection } from "./shared";
-import { openEffectWindow } from "./template";
+import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, ExplanationParagraph, normalizePatternSelection, openEffectWindow } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
+
+const explanation: ExplanationParagraph[] = [
+	{ text: "A cluster of comets fired outward, arcing down like the\ndrooping leaves of a palm tree.\n", height: 40 },
+	{ term: "Density", description: "Affects number of comets", height: 14 },
+	{ term: "Size", description: "Physical size of effect, affects duration\nof the effect", height: 28 },
+	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
+	{ term: "Comets Burst Crackle", description: "Each comet ends in a crackle", height: 14 },
+	{ term: "Comet Head Big", description: "Gives the comets a larger cluster head\ninstead of a single particle", height: 28 },
+	{ term: "Comet Trail Density", description: "Controls the density of the comet trails", height: 14 },
+	{ term: "Comet Trail Width", description: "Controls the width of the comet trails", height: 14 },
+	{ term: "Colour pattern", description: "Determines the sequence and arrangement\nof colours", height: 28 },
+	{ term: "   comets-one-type", description: "One set of colours for the comets", height: 14 },
+	{ term: "   comets-two-halves", description: "One set of colours for comets fired up,\nand one for the ones down", height: 28 },
+	{ term: "   comets-mixed", description: "Two sets of colours, to be mixed randomly", height: 14 },
+];
 
 export function openPalmEffectWindow(effect: PalmEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
@@ -49,8 +63,9 @@ export function openPalmEffectWindow(effect: PalmEffect | undefined, onSave: (ef
 	handle = openEffectWindow({
 		title: "Palm Effect",
 		width: 320,
-		height: 540,
+		height: 550,
 		saveText: isEditing ? "Update Effect" : "Add Effect",
+		explanation,
 		onClose: () => {
 			if (isReopening) {
 				isReopening = false;
@@ -60,7 +75,6 @@ export function openPalmEffectWindow(effect: PalmEffect | undefined, onSave: (ef
 			onClose?.();
 		},
 		content: [
-			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
 			createNumberRow("Density", size, 50, 150),
 			createNumberRow("Size", physicalSize, 1, 6, 0.1),
 			createNumberRow("Extra Longevity", extraLongevity, 0, 100),
@@ -80,7 +94,8 @@ export function openPalmEffectWindow(effect: PalmEffect | undefined, onSave: (ef
 				onChange: value => bigHead.set(value)
 			}),
 			createNumberRow("Comet Trail Density", trailDensity, 0, 1, 0.1),
-			createNumberRow("Comet Trail Width", trailWidth, 0, 5, 0.5),
+			createNumberRow("Comet Trail Width", trailWidth, 0, 5, 0.5),			
+			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
 			...colourRows
 		],
 		onSave: () => {

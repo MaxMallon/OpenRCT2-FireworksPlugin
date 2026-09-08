@@ -1,14 +1,19 @@
 import { Colour } from "openrct2-flexui";
+import { PersistentDataObject } from "./PersistentDataObject";
 
-export class LoadColours
+export class LoadColours extends PersistentDataObject
 {
+	readonly className: string = "LoadColours";
+
 	constructor(
 		public colourList: Colour[] = [],
 		public sequenceName: string = "",
 		public reverseSequence: boolean = false,
 		public pattern: string = "",
 		public namedColours: { [key: string]: Colour } = {}
-	) {}
+	) {
+		super();
+	}
 
 	private readNamedColour(name: string, index: number = 0): Colour
 	{
@@ -52,14 +57,11 @@ export class LoadColours
 		this.writeNamedColour(name, value);
 	}
 
-	toParkData(): any
+	override toParkData(): any
 	{
 		return {
-			className: "LoadColours",
+			...super.toParkData(),
 			colourList: [...this.colourList],
-			sequenceName: this.sequenceName,
-			reverseSequence: this.reverseSequence,
-			pattern: this.pattern,
 			namedColours: { ...this.namedColours }
 		};
 	}
@@ -76,21 +78,22 @@ export class LoadColours
 	}
 }
 
-export class ShellColours
+export class ShellColours extends PersistentDataObject
 {
+	readonly className: string = "ShellColours";
+
 	constructor(
 		public headColour: Colour = Colour.BrightYellow,
 		public trail1Colour: Colour = Colour.DarkOrange,
 		public trail2Colour: Colour = Colour.DarkOrange,
-	) {}
+	) {
+		super();
+	}
 
-	toParkData(): any
+	override toParkData(): any
 	{
 		return {
-			className: "ShellColours",
-			headColour: this.headColour,
-			trail1Colour: this.trail1Colour,
-			trail2Colour: this.trail2Colour
+			...super.toParkData()
 		};
 	}
 
@@ -104,18 +107,21 @@ export class ShellColours
 	}
 }
 
-export class ColourSequence
+export class ColourSequence extends PersistentDataObject
 {
+	readonly className: string = "ColourSequence";
+
 	constructor(
 		public name: string,
 		public colours: Colour[]
-	) {}
+	) {
+		super();
+	}
 
-	toParkData(): any
+	override toParkData(): any
 	{
 		return {
-			className: "ColourSequence",
-			name: this.name,
+			...super.toParkData(),
 			colours: [...this.colours]
 		};
 	}

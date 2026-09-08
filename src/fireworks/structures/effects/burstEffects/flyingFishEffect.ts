@@ -8,14 +8,18 @@ import { BurstEffect, EffectType } from "../../Effect";
 import { GetColouredEffectSprite, sprite } from "../../../../img/images";
 
 export class FlyingFishEffect extends BurstEffect {
+	override readonly className: string = "FlyingFishEffect";
+
 	constructor(size: number, physicalSize: number, extraLongevity: number, colours: LoadColours) {
 		super(EffectType.FlyingFish, size, physicalSize, extraLongevity, colours);
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "FlyingFishEffect" }; }
-
 	static fromParkData(effect: any): FlyingFishEffect {
 		return new FlyingFishEffect(effect?.size ?? 0, effect?.physicalSize ?? 0, effect?.extraLongevity ?? 0, LoadColours.fromParkData(effect?.colours));
+	}
+
+	override getDuration(): number {
+		return this.extraLongevity + this.physicalSize * 35;
 	}
 
 	override Make(posOri: CoordsXYZ, _velocity: CoordsXYZ): BurstEffect | undefined {

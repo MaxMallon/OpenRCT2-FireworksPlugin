@@ -1,8 +1,22 @@
 import { store } from "openrct2-flexui";
 import { SprayFanEffect } from "../../fireworks/structures/effects/burstEffects/sprayFanEffect";
-import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, EffectSizePreset, normalizePatternSelection } from "./shared";
-import { openEffectWindow } from "./template";
+import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, EffectSizePreset, ExplanationParagraph, normalizePatternSelection , openEffectWindow } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
+
+const explanation: ExplanationParagraph[] = [
+	{ text: "Multiple Spray Mines combine to form a fan.", height: 40 },
+	{ term: "Amount", description: "Exact number of particles per spray", height: 14 },
+	{ term: "Number Sprays", description: "Number of sprays to form the fan", height: 14 },
+	{ term: "Fan Angle", description: "The angle of the fan in a sense of how wide it is", height: 14 },
+	{ term: "Fan Orientation", description: "The angle of the fan on the ground, which\nway it faces", height: 28 },
+	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
+	{ term: "Time Till Stall", description: "The number of ticks before the particles reach\ntheir max height. Affects life time of particles.", height: 28 },
+	{ term: "Colour pattern", description: "Determines the sequence and arrangement\nof colours", height: 28 },
+	{ term: "   solid", description: "Fan is one colour", height: 14 },
+	{ term: "   2-col-alternating", description: "Sprays alternate in colour for stripes", height: 14 },
+	{ term: "   colour-sequence-layered", description: "A colour sequence is used to create horizontal\nlayers,like a rainbow", height: 28 },
+	{ term: "   colour-sequence", description: "A colour sequence is used to create vertical\nstripes, like the French flag", height: 14 },
+];
 
 export function openSprayFanEffectWindow(effect: SprayFanEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
@@ -41,8 +55,9 @@ export function openSprayFanEffectWindow(effect: SprayFanEffect | undefined, onS
 	handle = openEffectWindow({
 		title: "Spray Fan Effect",
 		width: 340,
-		height: 360,
+		height: 370,
 		saveText: isEditing ? "Update Effect" : "Add Effect",
+		explanation,
 		onClose: () => {
 			if (isReopening) {
 				isReopening = false;
@@ -52,7 +67,6 @@ export function openSprayFanEffectWindow(effect: SprayFanEffect | undefined, onS
 			onClose?.();
 		},
 		content: [
-			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
 			createEffectSizePresetRow(sizePresets, preset => {
 				amount.set(preset.size);
 				numberSprays.set(preset.physicalSize);
@@ -66,6 +80,7 @@ export function openSprayFanEffectWindow(effect: SprayFanEffect | undefined, onS
 			createNumberRow("Fan Orientation", fanOrientation, 0, 90, 2),
 			createNumberRow("Extra Longevity", extraLongevity, 0, 50),
 			createNumberRow("Time Till Stall", timeTillStall, 20, 50),
+			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
 			...(usesSequence ? [createSequenceDropdownRowWithReverse(colours.sequenceName, colours.reverseSequence)] : []),
 			...colourRows
 		],

@@ -1,11 +1,39 @@
 import { button, checkbox, Colour, compute, dropdown, flexible, groupbox, label, LayoutDirection, listview, store } from "openrct2-flexui";
 import { FountainEffect, FountainEffectPhase } from "../../fireworks/structures/effects/EmitterEffects/fountainEffect";
-import { Effect } from "../../fireworks/structures/Effect";	
-import { createColourPickerRow, createNumberRow } from "./shared";
-import { openEffectWindow } from "./template";
+import { Effect } from "../../fireworks/structures/Effect";
+import { isPopupOpen } from "../popupWindows";
+import { openEffectWindow, createColourPickerRow, createNumberRow, EFFECT_SUB_WINDOW_GROUP, ExplanationParagraph  } from "./effectWindowTemplate";
+import { colouredButton } from "../ColouredButton";
+
+const phaseExplanation: ExplanationParagraph[] = [
+	{ term: "Density", description: "Affects the number of particles", height: 14 },
+	{ term: "Max Height", description: "Affects the height that the particles reach", height: 14 },
+	{ term: "Angular Size", description: "The angle of the cone of particles.", height: 14 },
+	{ term: "Duration", description: "Number of seconds this phase lasts.", height: 14 },
+	{ term: "Colour 1-3", description: "Colours for the particles", height: 14 },
+	{ term: "Crackle", description: "Adds a crackling spark effect to the fountain", height: 14 },
+	{ term: "Crackle Colour", description: "Colour for the crackle", height: 14 },
+	];
+
+const fountainExplanation: ExplanationParagraph[] = [
+	{ text: "A continuous spray of particles made up of one or more\nphases played back to back that gradually transition from one to the next.", height: 28 },
+	{ term: "Tilt", description: "The angle in the vertical plane of where\nthe particles are sprayed towards.\n0 = up, 90 = horizontal, 180 = down", height: 36 },
+	{ term: "Azimuth", description: "The angle in the horizontal plane of where\nthe particles are sprayed towards.", height: 28 },
+	{ term: "Add", description: "Opens the window to add a new phase at\nthe end.", height: 28 },
+	{ term: "Edit", description: "Opens the window to edit the selected phase.", height: 14 },
+	{ term: "Delete", description: "Deletes the selected phase.", height: 14 },
+	{ term: "^", description: "Moves the selected phase 1 postion up.", height: 14 },
+	{ term: "v", description: "Moves the selected phase 1 postion up.", height: 14 },
+	
+	
+];
 
 function openFountainPhaseWindow(phase: FountainEffectPhase | undefined, onSave: (phase: FountainEffectPhase) => void, onClose?: () => void): void
 {
+	if (isPopupOpen(EFFECT_SUB_WINDOW_GROUP))
+	{
+		return;
+	}
 	const density = store(phase?.density ?? 2);
 	const maxHeight = store(phase?.maxHeight ?? 40);
 	const angularSize = store(phase?.angularSize ?? 10);
@@ -19,8 +47,10 @@ function openFountainPhaseWindow(phase: FountainEffectPhase | undefined, onSave:
 	openEffectWindow({
 		title: "Fountain Phase",
 		width: 300,
-		height: 350,
+		height: 360,
 		saveText: phase ? "Update Phase" : "Add Phase",
+		popupKey: EFFECT_SUB_WINDOW_GROUP,
+		explanation: phaseExplanation,
 		onClose,
 		content: [
 			createNumberRow("Density", density, 1, 5),
@@ -30,8 +60,8 @@ function openFountainPhaseWindow(phase: FountainEffectPhase | undefined, onSave:
 			createColourPickerRow("Colour 1", colour1),
 			createColourPickerRow("Colour 2", colour2),
 			createColourPickerRow("Colour 3", colour3),
-			createColourPickerRow("Crackle Colour", crackleColour),
-			checkbox({ text: "Crackle", isChecked: crackle, onChange: value => crackle.set(value) })
+			checkbox({ text: "Crackle", isChecked: crackle, onChange: value => crackle.set(value) }),
+			createColourPickerRow("Crackle Colour", crackleColour)
 		],
 		onSave: () => {
 			onSave(new FountainEffectPhase(
@@ -54,6 +84,7 @@ interface FountainPreset {
 	phases: FountainEffectPhase[];
 }
 
+//Fountains have some presets as examples
 const fountainPresets: FountainPreset[] = [
 	{
 		label: "Small Simple Fountain",
@@ -168,6 +199,7 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 		height: 400,
 		saveText: effect ? "Update Effect" : "Add Effect",
 		onClose,
+		explanation: fountainExplanation,
 		content: [
 			flexible({
 				direction: LayoutDirection.Horizontal,
@@ -223,11 +255,11 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 						direction: LayoutDirection.Horizontal,
 						height: 14,
 						content: [
-							button({ text: "Add", width: 65, onClick: addPhase }),
-							button({ text: "Edit", width: 65, onClick: editSelectedPhase }),
-							button({ text: "Delete", width: 65, onClick: removeSelectedPhase }),
-							button({ image: "arrow_up", width: 28, onClick: movePhaseUp }),
-							button({ image: "arrow_down", width: 28, onClick: movePhaseDown })
+							colouredButton({ text: "{WHITE}Add", width: 65, height: 28, colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen, onClick: addPhase }),
+							colouredButton({ text: "Edit", width: 65, height: 28, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: editSelectedPhase }),
+							colouredButton({ text: "{WHITE}Delete", width: 65, height: 28, colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed, onClick: removeSelectedPhase }),
+							button({ image: "arrow_up", width: 28, height: 28, onClick: movePhaseUp }),
+							button({ image: "arrow_down", width: 28, height: 28, onClick: movePhaseDown })
 						]
 					})
 				]

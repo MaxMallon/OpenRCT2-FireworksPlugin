@@ -1,4 +1,4 @@
-import { button, Colour, flexible, label, LayoutDirection, listview, store, textbox, window } from "openrct2-flexui";
+import { Colour, flexible, label, LayoutDirection, listview, store, textbox } from "openrct2-flexui";
 import type { OpenWindow } from "openrct2-flexui";
 import {
 	launchSites, loadMap, shellMap, groundEffectMap, sequenceMap, showMap, colourSequences,
@@ -12,8 +12,14 @@ import { Sequence } from "../fireworks/structures/Sequence";
 import { Show } from "../fireworks/structures/Show";
 import { ColourSequence } from "../fireworks/structures/ColourStructures";
 import { getMainWindowPosition } from "./windowState";
+import { makePopupGroupSwitchable, openPopupWindow } from "./popupWindows";
+import { colouredButton } from "./ColouredButton";
 
 const EXPORTS_KEY = "fireworks.exports";
+
+/** Group for config data-management windows (delete-all / import / export): only one open at a time, opening another switches to it. */
+export const DATA_WINDOW_GROUP = "config-data-window";
+makePopupGroupSwitchable(DATA_WINDOW_GROUP);
 
 function getStorage() {
 	if (typeof context === "undefined") return undefined;
@@ -41,8 +47,7 @@ function serializeCurrentData(): string {
 			ticks: 0,
 			fireworkEffectsActive: false,
 			interruptWhenTooManyParticles: true,
-			players: [],
-			showPlayer: undefined
+			players: []
 		}
 	});
 }
@@ -192,9 +197,9 @@ function openConflictWindow(_imported: ParsedData, conflicts: ConflictSummary, o
 	];
 
 	const listH = Math.max(30, Math.min(100, rows.length * 16 + 16));
-	const totalH = 160 + listH;
+	const totalH = 120 + listH;
 
-	const popup = window({
+	handle = openPopupWindow("import-name-conflicts", {
 		title: "Name Conflicts",
 		width: 380,
 		height: totalH,
@@ -219,30 +224,31 @@ function openConflictWindow(_imported: ParsedData, conflicts: ConflictSummary, o
 			flexible({
 				direction: LayoutDirection.Horizontal,
 				content: [
-					button({
-						text: "Keep existing",
-						width: 110,
-						height: 22,
-						onClick: () => { handle?.close(); onResolved(false); }
-					}),
-					button({
-						text: "Keep new",
-						width: 80,
-						height: 22,
-						onClick: () => { handle?.close(); onResolved(true); }
-					}),
-					button({
+					colouredButton({
 						text: "Cancel",
 						width: 70,
 						height: 22,
+						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 						onClick: () => handle?.close()
+					}),
+					colouredButton({
+						text: "Keep existing",
+						width: 110,
+						height: 22,
+						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
+						onClick: () => { handle?.close(); onResolved(false); }
+					}),
+					colouredButton({
+						text: "Keep new",
+						width: 80,
+						height: 22,
+						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
+						onClick: () => { handle?.close(); onResolved(true); }
 					})
 				]
 			})
 		]
 	});
-
-	handle = popup.open();
 }
 
 export function openExportWindow(): void {
@@ -254,10 +260,10 @@ export function openExportWindow(): void {
 
 	exportsListStore.set(Object.keys(loadSavedExports()).map(n => [n]));
 
-	const popup = window({
+	handle = openPopupWindow("export-data", {
 		title: "Export Fireworks Data",
 		width: 380,
-		height: 285,
+		height: 235,
 		padding: 8,
 		position: windowPos(),
 		colours: [Colour.DarkBlue, Colour.Grey],
@@ -281,10 +287,18 @@ export function openExportWindow(): void {
 			flexible({
 				direction: LayoutDirection.Horizontal,
 				content: [
-					button({
-						text: "Save",
+					colouredButton({
+						text: "Cancel",
+						width: 70,
+						height: 22,
+						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
+						onClick: () => handle?.close()
+					}),
+					colouredButton({
+						text: "{WHITE}Save",
 						width: 80,
 						height: 22,
+						colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
 						onClick: () => {
 							const name = nameInput.get().trim();
 							if (!name) return;
@@ -293,19 +307,11 @@ export function openExportWindow(): void {
 							writeSavedExports(exports);
 							handle?.close();
 						}
-					}),
-					button({
-						text: "Cancel",
-						width: 70,
-						height: 22,
-						onClick: () => handle?.close()
 					})
 				]
 			})
 		]
-	});
-
-	handle = popup.open();
+	}, DATA_WINDOW_GROUP);
 }
 
 export function openImportWindow(): void {
@@ -359,10 +365,10 @@ export function openImportWindow(): void {
 		selectedRow.set(null);
 	}
 
-	const popup = window({
+	handle = openPopupWindow("import-data", {
 		title: "Import Fireworks Data",
 		width: 380,
-		height: 260,
+		height: 240,
 		padding: 8,
 		position: windowPos(),
 		colours: [Colour.DarkBlue, Colour.Grey],
@@ -384,34 +390,36 @@ export function openImportWindow(): void {
 			flexible({
 				direction: LayoutDirection.Horizontal,
 				content: [
-					button({
-						text: "Import Overwrite",
-						width: 120,
-						height: 22,
-						onClick: doOverwrite
-					}),
-					button({
-						text: "Import Add",
-						width: 90,
-						height: 22,
-						onClick: doAdd
-					}),
-					button({
-						text: "Delete",
-						width: 70,
-						height: 22,
-						onClick: doDelete
-					}),
-					button({
+					colouredButton({
 						text: "Cancel",
 						width: 70,
 						height: 22,
+						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 						onClick: () => handle?.close()
+					}),
+					colouredButton({
+						text: "{WHITE}Import Overwrite",
+						width: 120,
+						height: 22,
+						colour:Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
+						onClick: doOverwrite
+					}),
+					colouredButton({
+						text: "{WHITE}Import Add",
+						width: 90,
+						height: 22,
+						colour:  Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
+						onClick: doAdd
+					}),
+					colouredButton({
+						text: "{WHITE}Delete",
+						width: 70,
+						height: 22,
+						colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
+						onClick: doDelete
 					})
 				]
 			})
 		]
-	});
-
-	handle = popup.open();
+	}, DATA_WINDOW_GROUP);
 }

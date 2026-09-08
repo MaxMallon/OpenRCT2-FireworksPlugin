@@ -1,10 +1,10 @@
-import { box, button, Colour, compute, dropdown, flexible, groupbox, label, LayoutDirection, listview, store, textbox } from "openrct2-flexui";
-import { cloneEffect } from "../../fireworks/loadHelpers";
+import { box, Colour, compute, dropdown, flexible, groupbox, label, LayoutDirection, listview, store, textbox } from "openrct2-flexui";
+import { cloneEffect, cloneGroundEffect } from "../../fireworks/cloneHelpers";
 import { openEffectEditorWindowForEffect, openEffectEditorWindowForType } from "../EffectDefineWindows/registry";
 import { Play, explodeLoad } from "../../fireworks/fireworksEffectsPlayer";
 import { ResetCounts } from "../../fireworks/particleSpawner";
-import { getGroundEffectList, getGroundEffectToEdit, setGroundEffectList, setGroundEffectToEdit, launchSites, launchSitesRevision, definedGroundEffects } from "../../fireworks/persistent";
-import { resolveLaunchSitePosition } from "../../fireworks/helpers";
+import { getGroundEffectList, getGroundEffectMap, getGroundEffectToEdit, setGroundEffectList, setGroundEffectToEdit, launchSites, launchSitesRevision, definedGroundEffects } from "../../fireworks/persistent";
+import { resolveLaunchSitePosition } from "../../fireworks/persistent";
 import { openDebuggerWindow } from "../debuggerWindow";
 import { buildValidationContext, findGroundEffectUsages, formatValidationIssues, removeItemFromSequences, ValidationIssue } from "../../fireworks/usageChecker";
 import { openUsageWarningWindow } from "../usageWarningWindow";
@@ -13,15 +13,28 @@ import { GroundEffect } from "../../fireworks/structures/Firework";
 import { Load } from "../../fireworks/structures/Load";
 import { SequenceItemType } from "../../fireworks/structures/Sequence";
 import { GetColouredEffectSprite, sprite } from "../../img/images";
+import { colouredButton } from "../ColouredButton";
+import { beginPaletteTest } from "../../fireworks/testPaletteMode";
+import { SerializedGroundEffectEditorState } from "../../fireworks/parkStorage";
+import { confirmDiscardChanges } from "../discardChangesWindow";
 
-const selectedGroundEffectIndex = store<number | undefined>(undefined);
-const selectedEffectIndex = store<number | undefined>(undefined);
-const editedName = store("");
-const editedEffects = store<Effect[]>([]);
-const selectedLaunchSiteName = store("");
-const addEffectTypeIndex = store(0);
-const isEffectDeleteMode = store(false);
-const isEffectEditorOpen = store(false);
+const DEFAULT_GROUND_EFFECT_EDITOR = {
+	name: "",
+	effects: [] as Effect[],
+	launchSiteName: "",
+	selectedIndex: undefined as number | undefined,
+	selectedEffectIndex: undefined as number | undefined,
+	addEffectTypeIndex: 0,
+	isEffectDeleteMode: false
+};
+
+const selectedGroundEffectIndex = store<number | undefined>(DEFAULT_GROUND_EFFECT_EDITOR.selectedIndex);
+const selectedEffectIndex = store<number | undefined>(DEFAULT_GROUND_EFFECT_EDITOR.selectedEffectIndex);
+const editedName = store(DEFAULT_GROUND_EFFECT_EDITOR.name);
+const editedEffects = store<Effect[]>(DEFAULT_GROUND_EFFECT_EDITOR.effects);
+const selectedLaunchSiteName = store(DEFAULT_GROUND_EFFECT_EDITOR.launchSiteName);
+const addEffectTypeIndex = store(DEFAULT_GROUND_EFFECT_EDITOR.addEffectTypeIndex);
+const isEffectDeleteMode = store(DEFAULT_GROUND_EFFECT_EDITOR.isEffectDeleteMode);
 
 const groundEffectsSearch = store("");
 const filteredGroundEffects = compute(groundEffectsSearch, definedGroundEffects, () => {
@@ -56,18 +69,14 @@ const addEffectTypes: EffectType[] = [
 	EffectType.TourbillionRisingWisp,
 ];
 
-function getTileHeightAt(worldX: number, worldY: number): number | undefined
-{
-	if (typeof map === "undefined")
-	{
+function getTileHeightAt(worldX: number, worldY: number): number | undefined {
+	if (typeof map === "undefined") {
 		return undefined;
 	}
 
 	const tile = map.getTile(Math.floor(worldX / 32), Math.floor(worldY / 32));
-	for (const element of tile.elements)
-	{
-		if (element.type === "surface")
-		{
+	for (const element of tile.elements) {
+		if (element.type === "surface") {
 			return element.baseHeight * 8;
 		}
 	}
@@ -75,8 +84,7 @@ function getTileHeightAt(worldX: number, worldY: number): number | undefined
 	return undefined;
 }
 
-function onTestGroundEffectButtonClick(): void
-{
+function onTestGroundEffectButtonClick(): void {
 	if (!validateGroundEffectEditor()) return;
 
 	// Validate all named references before testing
@@ -95,13 +103,11 @@ function onTestGroundEffectButtonClick(): void
 	let testPos: CoordsXYZ | undefined;
 
 	const launchSiteName = selectedLaunchSiteName.get().trim();
-	if (launchSiteName)
-	{
+	if (launchSiteName) {
 		testPos = resolveLaunchSitePosition(launchSiteName);
 	}
 
-	if (!testPos)
-	{
+	if (!testPos) {
 		const viewport = ui.mainViewport as {
 			getCentrePosition?: () => CoordsXY;
 			getCenterPosition?: () => CoordsXY;
@@ -112,12 +118,10 @@ function onTestGroundEffectButtonClick(): void
 		};
 
 		let viewportCentre: CoordsXY | undefined;
-		if (typeof viewport.getCentrePosition === "function")
-		{
+		if (typeof viewport.getCentrePosition === "function") {
 			viewportCentre = viewport.getCentrePosition();
 		}
-		else if (typeof viewport.getCenterPosition === "function")
-		{
+		else if (typeof viewport.getCenterPosition === "function") {
 			viewportCentre = viewport.getCenterPosition();
 		}
 		else if (
@@ -125,16 +129,14 @@ function onTestGroundEffectButtonClick(): void
 			&& typeof viewport.right === "number"
 			&& typeof viewport.top === "number"
 			&& typeof viewport.bottom === "number"
-		)
-		{
+		) {
 			viewportCentre = {
 				x: Math.floor((viewport.left + viewport.right) / 2),
 				y: Math.floor((viewport.top + viewport.bottom) / 2)
 			};
 		}
 
-		if (!viewportCentre)
-		{
+		if (!viewportCentre) {
 			console.log("Warning: Unable to resolve main viewport centre position.");
 			return;
 		}
@@ -151,41 +153,32 @@ function onTestGroundEffectButtonClick(): void
 	Play(true);
 	const effectsForTest = editedEffects.get().map(effect => {
 		const cloned = cloneEffect(effect);
-		if (cloned instanceof EmitterEffect && launchSiteName)
-		{
+		if (cloned instanceof EmitterEffect && launchSiteName) {
 			cloned.position = launchSiteName;
 		}
 		return cloned;
 	});
-	explodeLoad(new Load(effectsForTest), testPos, { x: 0, y: 0, z: 0 });
+	const testLoad = new Load(effectsForTest);
+	explodeLoad(testLoad, testPos, { x: 0, y: 0, z: 0 });
+	beginPaletteTest(testLoad.getDuration());
 }
 
-function getFallbackName(): string
-{
+function getFallbackName(): string {
 	return `G.E. ${definedGroundEffects.get().length + 1}`;
 }
 
-function cloneGroundEffect(source: GroundEffect): GroundEffect
-{
-	return new GroundEffect(source.effects.map(cloneEffect), source.name, source.position);
-}
-
-function syncEditorToEdit(): void
-{
+function syncEditorToEdit(): void {
 	setGroundEffectToEdit(new GroundEffect(editedEffects.get().map(cloneEffect), editedName.get().trim(), selectedLaunchSiteName.get().trim()));
 }
 
-function validateGroundEffectEditor(): boolean
-{
-	if (editedEffects.get().length === 0)
-	{
+function validateGroundEffectEditor(): boolean {
+	if (editedEffects.get().length === 0) {
 		if (typeof ui !== "undefined" && typeof ui.showError === "function")
 			ui.showError("Invalid ground effect", "A ground effect must have at least one effect.");
 		return false;
 	}
 
-	if (!selectedLaunchSiteName.get().trim())
-	{
+	if (!selectedLaunchSiteName.get().trim()) {
 		if (typeof ui !== "undefined" && typeof ui.showError === "function")
 			ui.showError("Invalid ground effect", "A ground effect must have a selected launch site.");
 		return false;
@@ -194,23 +187,74 @@ function validateGroundEffectEditor(): boolean
 	return true;
 }
 
-function resetEditor(): void
-{
-	editedName.set("");
-	editedEffects.set([]);
-	selectedLaunchSiteName.set("");
-	selectedGroundEffectIndex.set(undefined);
-	selectedEffectIndex.set(undefined);
-	isEffectDeleteMode.set(false);
-	setGroundEffectToEdit(undefined);
-	isEffectEditorOpen.set(false);
+export function getGroundEffectEditorState(): SerializedGroundEffectEditorState {
+	return {
+		groundEffect: new GroundEffect(editedEffects.get(), editedName.get().trim(), selectedLaunchSiteName.get().trim()).toParkData(),
+		isEffectDeleteMode: isEffectDeleteMode.get()
+	};
 }
 
-function loadSelectedGroundEffect(index: number): void
-{
+export function restoreGroundEffectEditorState(state: SerializedGroundEffectEditorState | undefined, decodeEffectFn: (data: any) => Effect): void {
+	if (!state || !state.groundEffect) {
+		resetGroundEffectEditor();
+		return;
+	}
+	const groundEffect = GroundEffect.fromParkData(state.groundEffect, decodeEffectFn);
+	editedName.set(groundEffect.name);
+	editedEffects.set(groundEffect.effects);
+	selectedLaunchSiteName.set(groundEffect.position);
+	selectedGroundEffectIndex.set(DEFAULT_GROUND_EFFECT_EDITOR.selectedIndex);
+	selectedEffectIndex.set(DEFAULT_GROUND_EFFECT_EDITOR.selectedEffectIndex);
+	addEffectTypeIndex.set(DEFAULT_GROUND_EFFECT_EDITOR.addEffectTypeIndex);
+	isEffectDeleteMode.set(typeof state.isEffectDeleteMode === "boolean" ? state.isEffectDeleteMode : DEFAULT_GROUND_EFFECT_EDITOR.isEffectDeleteMode);
+	if (groundEffect.name || groundEffect.effects.length > 0 || groundEffect.position) {
+		setGroundEffectToEdit(new GroundEffect(groundEffect.effects.map(cloneEffect), groundEffect.name.trim(), groundEffect.position.trim()));
+	} else {
+		setGroundEffectToEdit(undefined);
+	}
+}
+
+export function resetGroundEffectEditor(): void {
+	editedName.set(DEFAULT_GROUND_EFFECT_EDITOR.name);
+	editedEffects.set([]);
+	selectedLaunchSiteName.set(DEFAULT_GROUND_EFFECT_EDITOR.launchSiteName);
+	selectedGroundEffectIndex.set(DEFAULT_GROUND_EFFECT_EDITOR.selectedIndex);
+	selectedEffectIndex.set(DEFAULT_GROUND_EFFECT_EDITOR.selectedEffectIndex);
+	addEffectTypeIndex.set(DEFAULT_GROUND_EFFECT_EDITOR.addEffectTypeIndex);
+	isEffectDeleteMode.set(DEFAULT_GROUND_EFFECT_EDITOR.isEffectDeleteMode);
+	setGroundEffectToEdit(undefined);
+}
+
+export function isGroundEffectEditorDirty(): boolean {
+	const currentName = editedName.get().trim();
+	const currentEffects = editedEffects.get();
+	const currentSite = selectedLaunchSiteName.get().trim();
+
+	if (!currentName) {
+		return currentEffects.length > DEFAULT_GROUND_EFFECT_EDITOR.effects.length || currentSite !== DEFAULT_GROUND_EFFECT_EDITOR.launchSiteName;
+	}
+
+	const saved = getGroundEffectMap().get(currentName);
+	if (!saved) {
+		return true;
+	}
+
+	if (saved.position !== currentSite) {
+		return true;
+	}
+
+	const currentData = currentEffects.map((e: Effect) => e.toParkData());
+	const savedData = saved.effects.map((e: Effect) => e.toParkData());
+	return JSON.stringify(currentData) !== JSON.stringify(savedData);
+}
+
+function resetEditor(): void {
+	resetGroundEffectEditor();
+}
+
+function loadSelectedGroundEffect(index: number): void {
 	const entry = definedGroundEffects.get()[index];
-	if (!entry)
-	{
+	if (!entry) {
 		return;
 	}
 
@@ -222,8 +266,7 @@ function loadSelectedGroundEffect(index: number): void
 	setGroundEffectToEdit(cloneGroundEffect(entry));
 }
 
-function addOrUpdateGroundEffect(): void
-{
+function addOrUpdateGroundEffect(): void {
 	if (!validateGroundEffectEditor()) return;
 
 	const trimmedName = editedName.get().trim();
@@ -231,8 +274,7 @@ function addOrUpdateGroundEffect(): void
 	const positionName = selectedLaunchSiteName.get().trim();
 	const nextEffects = editedEffects.get().map(effect => {
 		const cloned = cloneEffect(effect);
-		if (cloned instanceof EmitterEffect)
-		{
+		if (cloned instanceof EmitterEffect) {
 			cloned.position = positionName;
 		}
 		return cloned;
@@ -240,22 +282,18 @@ function addOrUpdateGroundEffect(): void
 	const nextEntry = new GroundEffect(nextEffects, nextName, positionName);
 	const updated = [...getGroundEffectList()];
 	let existingIndex = -1;
-	for (let index = 0; index < updated.length; index++)
-	{
-		if (updated[index].name === nextName)
-		{
+	for (let index = 0; index < updated.length; index++) {
+		if (updated[index].name === nextName) {
 			existingIndex = index;
 			break;
 		}
 	}
 
-	if (existingIndex >= 0)
-	{
+	if (existingIndex >= 0) {
 		updated[existingIndex] = nextEntry;
 		selectedGroundEffectIndex.set(existingIndex);
 	}
-	else
-	{
+	else {
 		updated.push(nextEntry);
 		selectedGroundEffectIndex.set(updated.length - 1);
 	}
@@ -265,17 +303,14 @@ function addOrUpdateGroundEffect(): void
 	editedName.set(nextName);
 }
 
-function updateEditedEffects(nextEffects: Effect[]): void
-{
+function updateEditedEffects(nextEffects: Effect[]): void {
 	editedEffects.set(nextEffects);
 	syncEditorToEdit();
 }
 
-function upsertEditedEffect(effect: Effect): void
-{
+function upsertEditedEffect(effect: Effect): void {
 	const selectedIndex = selectedEffectIndex.get();
-	if (typeof selectedIndex === "number")
-	{
+	if (typeof selectedIndex === "number") {
 		const nextEffects = [...editedEffects.get()];
 		nextEffects[selectedIndex] = effect;
 		updateEditedEffects(nextEffects);
@@ -287,71 +322,37 @@ function upsertEditedEffect(effect: Effect): void
 	selectedEffectIndex.set(nextEffects.length - 1);
 }
 
-function markEffectEditorClosed(): void
-{
-	isEffectEditorOpen.set(false);
-}
-
-function tryOpenEffectEditor(openEditor: (onClose: () => void) => void): boolean
-{
-	if (isEffectEditorOpen.get())
-	{
-		return false;
-	}
-
-	isEffectEditorOpen.set(true);
-	openEditor(markEffectEditorClosed);
-	return true;
-}
-
-function openEffectEditorForSelection(effect: Effect, index: number): void
-{
-	if (isEffectEditorOpen.get())
-	{
-		return;
-	}
-
+function openEffectEditorForSelection(effect: Effect, index: number): void {
 	selectedEffectIndex.set(index);
-	tryOpenEffectEditor(onClose => openEffectEditorWindowForEffect(effect, updatedEffect => {
+	openEffectEditorWindowForEffect(effect, updatedEffect => {
 		const nextEffects = [...editedEffects.get()];
 		nextEffects[index] = updatedEffect;
 		updateEditedEffects(nextEffects);
-	}, onClose));
+	});
 }
 
-function onAddEffectTypeChange(index: number): void
-{
-	if (index === 0)
-	{
+function onAddEffectTypeChange(index: number): void {
+	if (index === 0) {
 		return;
 	}
 
 	addEffectTypeIndex.set(index);
 	const effectType = addEffectTypes[index - 1];
-	if (!effectType)
-	{
-		addEffectTypeIndex.set(0);
-		return;
-	}
-
-	if (isEffectEditorOpen.get())
-	{
+	if (!effectType) {
 		addEffectTypeIndex.set(0);
 		return;
 	}
 
 	selectedEffectIndex.set(undefined);
-	tryOpenEffectEditor(onClose => openEffectEditorWindowForType(effectType, newEffect => {
+	openEffectEditorWindowForType(effectType, newEffect => {
 		upsertEditedEffect(newEffect);
-	}, onClose));
+	});
 	addEffectTypeIndex.set(0);
 }
 
-function deleteSelectedGroundEffect(): void
-{
+function deleteSelectedGroundEffect(): void {
 	const selectedIndex = selectedGroundEffectIndex.get();
-	if (typeof selectedIndex !== "number")
-	{
+	if (typeof selectedIndex !== "number") {
 		return;
 	}
 
@@ -382,22 +383,18 @@ function deleteSelectedGroundEffect(): void
 	doDelete();
 }
 
-function onDeleteEffectClick(): void
-{
+function onDeleteEffectClick(): void {
 	isEffectDeleteMode.set(!isEffectDeleteMode.get());
 }
 
-function deleteEditedEffectAt(index: number): void
-{
+function deleteEditedEffectAt(index: number): void {
 	updateEditedEffects(editedEffects.get().filter((_, effectIndex) => effectIndex !== index));
 	selectedEffectIndex.set(undefined);
 }
 
-export function createGroundEffectsTab()
-{
+export function createGroundEffectsTab() {
 	const currentEdit = getGroundEffectToEdit();
-	if (currentEdit)
-	{
+	if (currentEdit) {
 		editedName.set(currentEdit.name);
 		editedEffects.set(currentEdit.effects.map(cloneEffect));
 		selectedLaunchSiteName.set(currentEdit.position);
@@ -443,12 +440,10 @@ export function createGroundEffectsTab()
 													return index >= 0 ? index + 1 : 0;
 												}),
 												onChange: index => {
-													if (index <= 0)
-													{
+													if (index <= 0) {
 														selectedLaunchSiteName.set("");
 													}
-													else
-													{
+													else {
 														const site = launchSites[index - 1];
 														selectedLaunchSiteName.set(site ? site.name : "");
 													}
@@ -469,8 +464,7 @@ export function createGroundEffectsTab()
 												items: compute(editedEffects, isEffectDeleteMode, (effects, deleteMode) => effects.map((effect, index) => {
 													const indexText = `${index + 1}`;
 													const typeText = effect.type;
-													if (!deleteMode)
-													{
+													if (!deleteMode) {
 														return [indexText, typeText, effect.GetSpriteString()];
 													}
 
@@ -487,13 +481,11 @@ export function createGroundEffectsTab()
 												selectedCell: compute(selectedEffectIndex, index => index === undefined ? null : { row: index, column: 0 }),
 												onClick: row => {
 													const effect = editedEffects.get()[row];
-													if (!effect)
-													{
+													if (!effect) {
 														return;
 													}
 
-													if (isEffectDeleteMode.get())
-													{
+													if (isEffectDeleteMode.get()) {
 														deleteEditedEffectAt(row);
 														return;
 													}
@@ -504,14 +496,17 @@ export function createGroundEffectsTab()
 											flexible({
 												direction: LayoutDirection.Horizontal,
 												content: [
-													button({
+													colouredButton({
 														text: compute(isEffectDeleteMode, enabled => enabled ? "Delete Mode: {RED}ON" : "Delete Mode: OFF"),
-														width: 115,													isPressed: isEffectDeleteMode,														onClick: onDeleteEffectClick
+														width: 115, height: 22,
+														colour: Colour.LightBrown, colourDark: Colour.SaturatedBrown, colourLight: Colour.SaturatedBrownLight,
+														pressed: isEffectDeleteMode, onClick: onDeleteEffectClick
 													}),
 													label({ text: "", width: "1w" }),
-													button({
-														text: "Test",
-														width: 50,
+													colouredButton({
+														text: "{WHITE}Test Ground Effect",
+														width: 115, height: 22,
+														colour: Colour.LightOrange, colourDark: Colour.DarkOrange, colourLight: Colour.OrangeLight,
 														onClick: onTestGroundEffectButtonClick
 													})
 												]
@@ -519,23 +514,29 @@ export function createGroundEffectsTab()
 											flexible({
 												direction: LayoutDirection.Horizontal,
 												content: [
-													button({
-														text: "Add Ground Effect",
-														width: 110,
+													colouredButton({
+														text: "{WHITE}Add Ground Effect",
+														width: 110, height: 22,
+														colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
 														onClick: addOrUpdateGroundEffect
 													}),
-													button({
-														text: "New",
-														width: 50,
-														onClick: resetEditor
+													colouredButton({
+														text: "{WHITE}New",
+														width: 50, height: 22,
+														colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
+														onClick: () => confirmDiscardChanges(isGroundEffectEditorDirty, resetEditor)
 													}),
-													button({
-														text: "Delete",
-														width: 80,
+													colouredButton({
+														text: "{WHITE}Delete G.E.",
+														width: 90, height: 22,
+														colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
 														onClick: deleteSelectedGroundEffect
 													}),
 													label({ text: "", width: "1w" }),
-													button({ text: "Debugger", width: 70, onClick: openDebuggerWindow })
+													colouredButton({
+														text: "{BLACK}Debugger", width: 70, height: 22,
+														colour: Colour.Yellow, colourDark: Colour.DarkYellow, colourLight: Colour.BrightYellow, onClick: openDebuggerWindow
+													})
 												]
 											})
 										]
@@ -558,9 +559,9 @@ export function createGroundEffectsTab()
 											listview({
 												items: compute(filteredGroundEffects, effects => effects.map(e => [e.name, e.GetSpriteString()])),
 												columns: [
-													{ header: "Name", width: "3w" },													
+													{ header: "Name", width: "3w" },
 													{ header: "Icons", width: "2w" }
-											],
+												],
 												width: "1w",
 												height: "1w",
 												canSelect: true,
@@ -576,7 +577,7 @@ export function createGroundEffectsTab()
 													const effect = filteredGroundEffects.get()[row];
 													if (!effect) return;
 													const fullIndex = definedGroundEffects.get().findIndex(e => e.name === effect.name);
-													if (fullIndex >= 0) loadSelectedGroundEffect(fullIndex);
+													if (fullIndex >= 0) confirmDiscardChanges(isGroundEffectEditorDirty, () => loadSelectedGroundEffect(fullIndex));
 												}
 											})
 										]

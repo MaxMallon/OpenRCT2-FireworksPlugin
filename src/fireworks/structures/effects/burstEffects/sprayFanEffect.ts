@@ -6,16 +6,21 @@ import { GetColouredEffectSprite, sprite } from "../../../../img/images";
 
 export class SprayFanEffect extends BurstEffect
 {
+	override readonly className: string = "SprayFanEffect";
+
 	constructor(public amount: number, public numberSprays: number, public fanAngle: number, extraLongevity: number, public timeTillStall: number, colours: LoadColours, public fanOrientation: number = 0)
 	{
 		super(EffectType.SprayFan, 0, 0, extraLongevity, colours);
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "SprayFanEffect" }; }
-
 	static fromParkData(effect: any): SprayFanEffect
 	{
 		return new SprayFanEffect(effect?.amount ?? 0, effect?.numberSprays ?? 0, effect?.fanAngle ?? 0, effect?.extraLongevity ?? 0, effect?.timeTillStall ?? 0, LoadColours.fromParkData(effect?.colours), effect?.fanOrientation ?? 0);
+	}
+
+	override getDuration(): number
+	{
+		return this.extraLongevity + this.timeTillStall + 30;
 	}
 
 	override Make(posOri: CoordsXYZ, velocity: CoordsXYZ): BurstEffect | undefined

@@ -13,19 +13,30 @@ export class FountainEffectPhase{
 }
 
 export class FountainEffect extends EmitterEffect {
+	override readonly className: string = "FountainEffect";
+
 	constructor(public phases: FountainEffectPhase[], public tilt: number, public azimuth: number, timeLeft: number, position: string | CoordsXYZ, public currentPhaseIndex: number = -1) {
 		super(EffectType.Fountain, phases[0].duration, timeLeft,  0 as unknown as LoadColours, position);
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "FountainEffect" }; }
-
 	static fromParkData(effect: any): FountainEffect {
-		return new FountainEffect(effect.phases.map((phase: any) => new FountainEffectPhase(phase.density, phase.maxHeight, phase.colour1, phase.colour2, phase.colour3, phase.crackleColour, phase.crackle, phase.angularSize, phase.duration)), effect.tilt, effect.azimuth, effect.timeLeft, effect.position);
+		const fe = new FountainEffect(effect.phases.map((phase: any) => new FountainEffectPhase(phase.density, phase.maxHeight, phase.colour1, phase.colour2, phase.colour3, phase.crackleColour, phase.crackle, phase.angularSize, phase.duration)), effect.tilt, effect.azimuth, effect.timeLeft, effect.position, effect.currentPhaseIndex ?? -1);
+		if (fe.currentPhaseIndex >= 0 && fe.currentPhaseIndex < fe.phases.length) {
+			fe.duration = fe.phases[fe.currentPhaseIndex].duration;
+		}
+		return fe;
+	}
+
+	override getDuration(): number {
+		// Effect walks through each phase then a final 1-tick wind-down phase.
+		return this.phases.reduce((sum, phase) => sum + phase.duration, 0) + 1;
 	}
 
 	InterpolateFountainEffectPhase(phase1: FountainEffectPhase, phase2: FountainEffectPhase, t: number): FountainEffectPhase {
 		const density = phase1.density + (phase2.density - phase1.density) * t;
-		const maxHeight = phase1.maxHeight + (phase2.maxHeight - phase1.maxHeight) * t;
+		// Clamp at 0 so interpolating into the 0-height wind-down phase never produces a
+		// negative maxHeight (which would give spawned particles a negative lifetime).
+		const maxHeight = Math.max(0, phase1.maxHeight + (phase2.maxHeight - phase1.maxHeight) * t);
 		const ran = Math.random();
 		let colour1 = phase1.colour1;
 		let colour2 = phase1.colour2;
@@ -59,29 +70,6 @@ export class FountainEffect extends EmitterEffect {
 			const currentPhase = this.phases[this.currentPhaseIndex];
 			const interpolatedPhase = this.InterpolateFountainEffectPhase(currentPhase, nextPhase, ratio);
 		
-			/*this.maxHeight = interpolatedPhase.maxHeight;
-			let height = this.maxHeight;
-			/*
-			switch (this.forceProfile) {
-				case "flat":
-					height = this.maxHeight;
-					break;
-				case "linear":
-					height = this.maxHeight * ratio;
-					break;
-				case "sine":
-					height = this.maxHeight * Math.sin(ratio * Math.PI);
-					break;
-				case "rounded-trapezoid":
-					height = this.maxHeight * Math.pow(Math.sin(ratio * Math.PI), 0.3);
-					break;
-				case "skewed-rounded-trapezoid":
-					let x = ratio * Math.PI;
-					let inner = (x + Math.PI)/ 2;
-					height = this.maxHeight * 1.4 * (Math.pow(Math.sin(inner), 0.3) * - Math.cos(inner));
-					break;
-
-			}*/
 			let colour = interpolatedPhase.colour1;
 			if (interpolatedPhase.colour2 != Colour.Invisible && Math.random() < 0.5)
 				colour = interpolatedPhase.colour2;
@@ -120,26 +108,13 @@ export class FountainEffect extends EmitterEffect {
 				if (interpolatedPhase.crackle && Math.random() < 0.2) {
 					const loadColours = new LoadColours([interpolatedPhase.crackleColour, interpolatedPhase.crackleColour, interpolatedPhase.crackleColour], "", false, "");
 					const load = new ShellLoad("", ShellLoad.explodeAtEnd, undefined, new Load([new MicroBurstEffect(loadColours, 3)]));
-					const shot = Shell.fromBurst("", load, [], ShotHeadType.Small, false, 0, 0, _posOri, new ShellColours(colour, Colour.Invisible, Colour.Invisible), { x: vx, y: vy, z: vz }, (interpolatedPhase.maxHeight + Math.random() * 30) * (Math.random() * 0.75 + 0.25));
+					// Floor and clamp at 1 — the engine stores timeToLive as an int and only despawns at
+					// exactly 0, so a fractional value here would leave an immortal particle behind.
+					const crackleLife = Math.max(1, Math.floor((interpolatedPhase.maxHeight + Math.random() * 30) * (Math.random() * 0.75 + 0.25)));
+					const shot = Shell.fromBurst("", load, [], ShotHeadType.Small, false, 0, 0, _posOri, new ShellColours(colour, Colour.Invisible, Colour.Invisible), { x: vx, y: vy, z: vz }, crackleLife);
 					shot.Light();
 				}
 			}
-			
-			/*if (interpolatedPhase.crackle) {
-				for (let j = 0; j < 2 * interpolatedPhase.angularSize / 4; j++){
-					var	theta = Math.random() * 2 * Math.PI;
-					var	phi = Math.acos(2 * Math.random() - 1);	
-
-					let x3 = Math.sin(phi) * Math.cos(theta);
-					let y3 = Math.sin(phi) * Math.sin(theta);
-					let z3 = Math.cos(phi);
-					let size = interpolatedPhase.angularSize / 15;
-					let x = _posOri.x + x3 * tileSize * size;		
-					let y = _posOri.y + y3 * tileSize * size;	
-					let z = _posOri.z + interpolatedPhase.maxHeight * 4 + z3 * tileSize * size * zScaleOffset;
-					SpawnLight({x, y, z}, { x: 0, y: 0, z: counterGravity1sec}, interpolatedPhase.crackleColour, interpolatedPhase.crackleColour, 5);
-				}
-			}*/
 		}
 
 		this.timeLeft--;

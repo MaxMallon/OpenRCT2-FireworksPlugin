@@ -27,7 +27,7 @@ export var EffectType;
     EffectType["Spray"] = "spray";
     EffectType["SprayFan"] = "sprayfan";
     EffectType["CometFan"] = "cometfan";
-    EffectType["BigBouqet"] = "bigbouqet";
+    EffectType["ShellOfShells"] = "shellofshells";
     EffectType["MicroBurst"] = "microburst";
     EffectType["Unknown"] = "unknown";
 })(EffectType || (EffectType = {}));

@@ -7,12 +7,12 @@ import { GetColouredEffectSprite, sprite } from "../../../../img/images";
 
 export class CrackleEffect extends EmitterEffect
 {
+	override readonly className: string = "CrackleEffect";
+
 	constructor(public size: number, public physicalSize: number, public delay: number, public fullDelay: number = delay, public colour: Colour, public extraLongevity: number, duration: number = extraLongevity + 8 * physicalSize,  timeLeft: number = duration, public posOri: CoordsXYZ = { x: 0, y: 0, z: 0 })
 	{
 		super(EffectType.Crackle, duration, timeLeft,  0 as unknown as LoadColours, posOri);
 	}
-
-	override toParkData(): any { return { ...super.toParkData(), className: "CrackleEffect" }; }
 
 	static fromParkData(effect: any): CrackleEffect
 	{

@@ -1,8 +1,27 @@
 import { store } from "openrct2-flexui";
 import { CometFanEffect } from "../../fireworks/structures/effects/burstEffects/cometFanEffect";
-import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, EffectSizePreset, normalizePatternSelection } from "./shared";
-import { openEffectWindow } from "./template";
+import { openEffectWindow, applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, EffectSizePreset, ExplanationParagraph, normalizePatternSelection  } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
+
+const explanation: ExplanationParagraph[] = [
+	{ text: "A fan of comets is launched from a point.", height: 20 },
+	{ term: "Number Comets", description: "Exact number of comets to make the fan", height: 14 },
+	{ term: "Fan Angle", description: "The angle of the fan in a sense of how wide it is", height: 14 },
+	{ term: "Fan Orientation", description: "The angle of the fan on the ground, which\nway it faces", height: 28 },
+	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
+	{ term: "Time Till Stall", description: "The number of ticks before the particles reach\ntheir max height. Affects life time of particles.", height: 28 },
+	{ term: "Trail Density", description: "Controls the density of the comet trails", height: 14 },
+	{ term: "Trail Width", description: "Controls the width of the comet trails", height: 14 },
+	{ term: "Colour pattern", description: "Determines the sequence and arrangement\nof colours", height: 28 },
+	{ term: "   solid", description: "Fan is one colour", height: 14 },
+	{ term: "   2-col-alternating", description: "Comets alternate in colour for stripes", height: 14 },
+	{ term: "   colour-sequence-trail", description: "A colour sequence is used for the trails.\nHead colour set seperate", height: 28 },
+	{ term: "   colour-sequence-head", description: "A colour sequence is used for the heads\nTrail colour set seperate", height: 28 },
+	{ term: "   colour-sequence", description: "A colour sequence is used the full comets", height: 14 },
+	{ term: "Head", description: "Colour of the comets' heads", height: 14 },
+	{ term: "Trail 1-2", description: "Colours of the comets' trails", height: 14 },
+];
+
 
 export function openCometFanEffectWindow(effect: CometFanEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
@@ -51,8 +70,9 @@ export function openCometFanEffectWindow(effect: CometFanEffect | undefined, onS
 	handle = openEffectWindow({
 		title: "Comet Fan Effect",
 		width: 340,
-		height: 510,
+		height: 520,
 		saveText: isEditing ? "Update Effect" : "Add Effect",
+		explanation,
 		onClose: () => {
 			if (isReopening) {
 				isReopening = false;
@@ -62,7 +82,6 @@ export function openCometFanEffectWindow(effect: CometFanEffect | undefined, onS
 			onClose?.();
 		},
 		content: [
-			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
 			createEffectSizePresetRow(sizePresets, preset => {
 				numberComets.set(preset.physicalSize);
 				timeTillStall.set(preset.size);
@@ -78,6 +97,7 @@ export function openCometFanEffectWindow(effect: CometFanEffect | undefined, onS
 			createNumberRow("Time Till Stall", timeTillStall, 0, 70),
 			createNumberRow("Trail Density", trailDensity, 0, 1, 0.05),
 			createNumberRow("Trail Width", trailWidth, 0, 10, 0.5),
+			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
 			...(usesSequence ? [createSequenceDropdownRowWithReverse(colours.sequenceName, colours.reverseSequence)] : []),
 			...colourRows
 		],

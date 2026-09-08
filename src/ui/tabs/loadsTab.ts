@@ -1,26 +1,37 @@
-import { box, button, compute, dropdown, flexible, groupbox, label, LayoutDirection, listview, store, textbox } from "openrct2-flexui";
-import { collectBigBouqetReferencedLoadNames, cloneEffect, cloneLoad, resolveLoadContentsToLatest } from "../../fireworks/loadHelpers";
+import { box, compute, dropdown, flexible, groupbox, label, LayoutDirection, listview, store, textbox } from "openrct2-flexui";
+import { cloneEffect, cloneLoad } from "../../fireworks/cloneHelpers";
 import { openEffectEditorWindowForEffect, openEffectEditorWindowForType } from "../EffectDefineWindows/registry";
 import { Play, explodeLoad } from "../../fireworks/fireworksEffectsPlayer";
 import { ResetCounts } from "../../fireworks/particleSpawner";
-import { getEditLoad, getLoadList, setEditLoad, setLoadList, definedLoads } from "../../fireworks/persistent";
+import { getEditLoad, getLoadList, getLoadMap, setEditLoad, setLoadList, definedLoads } from "../../fireworks/persistent";
 import { openDebuggerWindow } from "../debuggerWindow";
-import { buildValidationContext, findLoadUsages, formatValidationIssues, removeLoadUsages, ValidationIssue } from "../../fireworks/usageChecker";
+import { buildValidationContext, collectShellOfShellsReferencedLoadNames, findLoadUsages, formatValidationIssues, removeLoadUsages, ValidationIssue } from "../../fireworks/usageChecker";
 import { openUsageWarningWindow } from "../usageWarningWindow";
 import { Effect, EffectType } from "../../fireworks/structures/Effect";
 import { Load } from "../../fireworks/structures/Load";
 import { GetColouredEffectSprite, sprite } from "../../img/images";
 import { Colour } from "openrct2-flexui";
 import { GetFireworkTestLocation, isEditorWindowObscuringCenter } from "../../fireworks/helpers";
+import { colouredButton } from "../ColouredButton";
+import { beginPaletteTest } from "../../fireworks/testPaletteMode";
+import { SerializedLoadEditorState } from "../../fireworks/parkStorage";
+import { confirmDiscardChanges } from "../discardChangesWindow";
 
+const DEFAULT_LOAD_EDITOR = {
+	name: "",
+	effects: [] as Effect[],
+	selectedIndex: undefined as number | undefined,
+	selectedEffectIndex: undefined as number | undefined,
+	addEffectTypeIndex: 0,
+	isEffectDeleteMode: false
+};
 
-const selectedLoadIndex = store<number | undefined>(undefined);
-const selectedEffectIndex = store<number | undefined>(undefined);
-const editedLoadName = store("");
-const editedLoadEffects = store<Effect[]>([]);
-const addEffectTypeIndex = store(0);
-const isEffectDeleteMode = store(false);
-const isEffectEditorOpen = store(false);
+const selectedLoadIndex = store<number | undefined>(DEFAULT_LOAD_EDITOR.selectedIndex);
+const selectedEffectIndex = store<number | undefined>(DEFAULT_LOAD_EDITOR.selectedEffectIndex);
+const editedLoadName = store(DEFAULT_LOAD_EDITOR.name);
+const editedLoadEffects = store<Effect[]>(DEFAULT_LOAD_EDITOR.effects);
+const addEffectTypeIndex = store(DEFAULT_LOAD_EDITOR.addEffectTypeIndex);
+const isEffectDeleteMode = store(DEFAULT_LOAD_EDITOR.isEffectDeleteMode);
 
 const loadsSearch = store("");
 const filteredLoads = compute(loadsSearch, definedLoads, () => {
@@ -85,7 +96,9 @@ function onTestLoadsButtonClick() {
 	Play(true);
 	let height = 8 * 100;
 	let pos = GetFireworkTestLocation(height);
-	explodeLoad(resolveLoadContentsToLatest(loadToTest), { x: pos.x, y: pos.y, z: height + 100 }, { x: 0, y: 0, z: 0 });
+	const resolvedLoad = cloneLoad(loadToTest);
+	explodeLoad(resolvedLoad, { x: pos.x, y: pos.y, z: height + 100 }, { x: 0, y: 0, z: 0 });
+	beginPaletteTest(resolvedLoad.getDuration());
 }
 
 function getFallbackLoadName(): string {
@@ -105,14 +118,58 @@ function validateLoadEditor(): boolean {
 	return true;
 }
 
-function resetLoadEditor(): void {
-	editedLoadName.set("");
+export function getLoadEditorState(): SerializedLoadEditorState {
+	return {
+		load: new Load(editedLoadEffects.get(), editedLoadName.get().trim()).toParkData(),
+		isEffectDeleteMode: isEffectDeleteMode.get()
+	};
+}
+
+export function restoreLoadEditorState(state: SerializedLoadEditorState | undefined, decodeEffectFn: (data: any) => Effect): void {
+	if (!state || !state.load) {
+		resetLoadEditor();
+		return;
+	}
+	const load = Load.fromParkData(state.load, decodeEffectFn);
+	editedLoadName.set(load.name);
+	editedLoadEffects.set(load.effects);
+	selectedLoadIndex.set(DEFAULT_LOAD_EDITOR.selectedIndex);
+	selectedEffectIndex.set(DEFAULT_LOAD_EDITOR.selectedEffectIndex);
+	addEffectTypeIndex.set(DEFAULT_LOAD_EDITOR.addEffectTypeIndex);
+	isEffectDeleteMode.set(typeof state.isEffectDeleteMode === "boolean" ? state.isEffectDeleteMode : DEFAULT_LOAD_EDITOR.isEffectDeleteMode);
+	if (load.name || load.effects.length > 0) {
+		setEditLoad(new Load(load.effects.map(cloneEffect), load.name.trim()));
+	} else {
+		setEditLoad(undefined);
+	}
+}
+
+export function resetLoadEditor(): void {
+	editedLoadName.set(DEFAULT_LOAD_EDITOR.name);
 	editedLoadEffects.set([]);
-	selectedLoadIndex.set(undefined);
-	selectedEffectIndex.set(undefined);
-	isEffectDeleteMode.set(false);
+	selectedLoadIndex.set(DEFAULT_LOAD_EDITOR.selectedIndex);
+	selectedEffectIndex.set(DEFAULT_LOAD_EDITOR.selectedEffectIndex);
+	addEffectTypeIndex.set(DEFAULT_LOAD_EDITOR.addEffectTypeIndex);
+	isEffectDeleteMode.set(DEFAULT_LOAD_EDITOR.isEffectDeleteMode);
 	setEditLoad(undefined);
-	isEffectEditorOpen.set(false);
+}
+
+export function isLoadEditorDirty(): boolean {
+	const currentName = editedLoadName.get().trim();
+	const currentEffects = editedLoadEffects.get();
+
+	if (!currentName) {
+		return currentEffects.length > DEFAULT_LOAD_EDITOR.effects.length;
+	}
+
+	const saved = getLoadMap().get(currentName);
+	if (!saved) {
+		return true;
+	}
+
+	const currentData = currentEffects.map(e => e.toParkData());
+	const savedData = saved.effects.map(e => e.toParkData());
+	return JSON.stringify(currentData) !== JSON.stringify(savedData);
 }
 
 function loadSelectedLoad(index: number): void {
@@ -176,31 +233,13 @@ function upsertEditedEffect(effect: Effect): void {
 	selectedEffectIndex.set(nextEffects.length - 1);
 }
 
-function markEffectEditorClosed(): void {
-	isEffectEditorOpen.set(false);
-}
-
-function tryOpenEffectEditor(openEditor: (onClose: () => void) => void): boolean {
-	if (isEffectEditorOpen.get()) {
-		return false;
-	}
-
-	isEffectEditorOpen.set(true);
-	openEditor(markEffectEditorClosed);
-	return true;
-}
-
 function openEffectEditorForSelection(effect: Effect, index: number): void {
-	if (isEffectEditorOpen.get()) {
-		return;
-	}
-
 	selectedEffectIndex.set(index);
-	tryOpenEffectEditor(onClose => openEffectEditorWindowForEffect(effect, updatedEffect => {
+	openEffectEditorWindowForEffect(effect, updatedEffect => {
 		const nextEffects = [...editedLoadEffects.get()];
 		nextEffects[index] = updatedEffect;
 		updateEditedEffects(nextEffects);
-	}, onClose));
+	});
 }
 
 function onAddEffectTypeChange(index: number): void {
@@ -214,15 +253,11 @@ function onAddEffectTypeChange(index: number): void {
 		addEffectTypeIndex.set(0);
 		return;
 	}
-	if (isEffectEditorOpen.get()) {
-		addEffectTypeIndex.set(0);
-		return;
-	}
 
 	if (effectType === EffectType.ShellOfShells) {
 		const selectedLoad = selectedLoadIndex.get() === undefined ? undefined : definedLoads.get()[selectedLoadIndex.get()!];
 		const currentLoadName = editedLoadName.get().trim() || selectedLoad?.name.trim() || "";
-		const referencedNames = collectBigBouqetReferencedLoadNames(getLoadList());
+		const referencedNames = collectShellOfShellsReferencedLoadNames(getLoadList());
 		if (currentLoadName && referencedNames.indexOf(currentLoadName) >= 0) {
 			if (typeof ui !== "undefined" && typeof ui.showError === "function") {
 				ui.showError("Invalid effect", "This load is already used in a Shell of Shells, so another Shell of Shells cannot be added here.");
@@ -233,9 +268,9 @@ function onAddEffectTypeChange(index: number): void {
 	}
 
 	selectedEffectIndex.set(undefined);
-	tryOpenEffectEditor(onClose => openEffectEditorWindowForType(effectType, newEffect => {
+	openEffectEditorWindowForType(effectType, newEffect => {
 		upsertEditedEffect(newEffect);
-	}, onClose));
+	});
 	addEffectTypeIndex.set(0);
 }
 
@@ -362,14 +397,20 @@ export function createLoadsTab() {
 											flexible({
 												direction: LayoutDirection.Horizontal,
 												content: [
-													button({
+													colouredButton({
 														text: compute(isEffectDeleteMode, enabled => enabled ? "Delete Mode: {RED}ON" : "Delete Mode: OFF"),
-														width: 115,													isPressed: isEffectDeleteMode,														onClick: onDeleteEffectClick
+														width: 115,
+														height: 22,
+														colour: Colour.LightBrown, colourDark: Colour.SaturatedBrown, colourLight: Colour.SaturatedBrownLight,
+														pressed: isEffectDeleteMode,
+														onClick: onDeleteEffectClick
 													}),
 													label({ text: "", width: "1w" }),
-													button({
-														text: "Test Load",
+													colouredButton({
+														text: "{WHITE}Test Load",
 														width: 90,
+														height: 22,
+														colour: Colour.LightOrange, colourDark: Colour.DarkOrange, colourLight: Colour.OrangeLight,
 														onClick: onTestLoadsButtonClick
 													})
 												]
@@ -377,23 +418,27 @@ export function createLoadsTab() {
 											flexible({
 												direction: LayoutDirection.Horizontal,
 												content: [
-													button({
-														text: "Add Load",
-														width: 110,
+													colouredButton({
+														text: "{WHITE}Add Load",
+														width: 110,height: 22,
+                                                        colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
 														onClick: addOrUpdateLoad
 													}),
-													button({
-														text: "New",
-														width: 50,
-														onClick: resetLoadEditor
+													colouredButton({
+														text: "{WHITE}New",
+														width: 50,height: 22,
+                                                        colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
+														onClick: () => confirmDiscardChanges(isLoadEditorDirty, resetLoadEditor)
 													}),
-													button({
-														text: "Delete Load",
-														width: 80,
+													colouredButton({
+														text: "{WHITE}Delete Load",
+														width: 80,height: 22,
+                                                        colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
 														onClick: deleteSelectedLoad
 													}),
 													label({ text: "", width: "1w" }),
-													button({ text: "Debugger", width: 70, onClick: openDebuggerWindow })
+													colouredButton({ text: "{BLACK}Debugger", width: 70,height: 22,
+                                                        colour: Colour.Yellow, colourDark: Colour.DarkYellow, colourLight: Colour.BrightYellow, onClick: openDebuggerWindow })
 												]
 											})
 										]
@@ -434,7 +479,7 @@ export function createLoadsTab() {
 													const load = filteredLoads.get()[row];
 													if (!load) return;
 													const fullIndex = definedLoads.get().findIndex(l => l.name === load.name);
-													if (fullIndex >= 0) loadSelectedLoad(fullIndex);
+													if (fullIndex >= 0) confirmDiscardChanges(isLoadEditorDirty, () => loadSelectedLoad(fullIndex));
 												}
 											})
 										]

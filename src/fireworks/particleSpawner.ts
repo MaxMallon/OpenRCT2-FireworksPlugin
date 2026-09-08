@@ -17,7 +17,7 @@ export function SpawnLight(
     const boom = map.createEntity("crashed_vehicle_particle", pos) as CrashedVehicleParticle | null;
     if (boom) {
         spawnedParticlesCount++;    
-        boom.timeToLive = time;
+        boom.timeToLive = Math.max(1, Math.floor(time));
         boom.acceleration = velocity;
         boom.colours = { body: colour0, trim: colour1 };
         if (frame !== undefined) {

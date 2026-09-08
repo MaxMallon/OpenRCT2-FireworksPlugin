@@ -1,8 +1,25 @@
 import { store } from "openrct2-flexui";
 import { SphereEffect } from "../../fireworks/structures/effects/burstEffects/sphereEffect";
-import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, normalizePatternSelection } from "./shared";
-import { openEffectWindow } from "./template";
+import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, ExplanationParagraph, normalizePatternSelection , openEffectWindow } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
+
+const explanation: ExplanationParagraph[] = [
+	{ text: "A symmetrical sphere of particles.\n", height: 40 },
+	{ term: "Density", description: "Affects number of particles", height: 14 },
+	{ term: "Size", description: "Physical size of effect, affects duration\nof the effect", height: 28 },
+	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
+	{ term: "Colour pattern", description: "Determines the sequence and arrangement\nof colours", height: 28 },
+	{ term: "   one-pair", description: "Sphere made of a single type of particle", height: 14 },
+	{ term: "   2-halves", description: "Two halve spheres of different colours", height: 14 },
+	{ term: "   2-mixed", description: "Two colours mixed randomly", height: 14 },
+	{ term: "   3-mixed", description: "Three colours mixed randomly", height: 14 },
+	{ term: "   random", description: "Using a colour sequence in random order", height: 14 },
+	{ term: "   blinking-uniform-1zone", description: "A blinking sphere", height: 14 },
+	{ term: "   blinking-uniform-2zones", description: "A blinking sphere of two halves", height: 14 },
+	{ term: "   blinking-uniform-4zones", description: "A blinking sphere of four zones, like\norange slices", height: 28 },
+	{ term: "   blinking-uniform-6zones", description: "A blinking sphere of six zones, like a die", height: 14 },
+	{ term: "   colour-sequence-layered", description: "A sphere with colours arranged in layers\n according to the sequence", height: 28 },
+];
 
 export function openSphereEffectWindow(effect: SphereEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
@@ -47,8 +64,9 @@ export function openSphereEffectWindow(effect: SphereEffect | undefined, onSave:
 	handle = openEffectWindow({
 		title: "Sphere Effect",
 		width: 320,
-		height: 580,
+		height: 590,
 		saveText: isEditing ? "Update Effect" : "Add Effect",
+		explanation,
 		onClose: () => {
 			if (isReopening) {
 				isReopening = false;
@@ -66,7 +84,7 @@ export function openSphereEffectWindow(effect: SphereEffect | undefined, onSave:
 				physicalSize.set(preset.physicalSize);
 				extraLongevity.set(preset.extraLongevity);
 			}),
-			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange, "Colour Pattern"),
+			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
 			...(usesSequence ? [createSequenceDropdownRowWithReverse(colours.sequenceName, colours.reverseSequence)] : []),
 			...colourRows
 		],

@@ -12,7 +12,9 @@ import { GetColouredEffectSprite, sprite } from "../../../../img/images";
 import { GetLoadByName } from "../../../persistent";
 import { Colour } from "openrct2-flexui";
 
-export class BigBouqetEffect extends BurstEffect {
+export class ShellOfShellsEffect extends BurstEffect {
+	override readonly className: string = "ShellOfShellsEffect";
+
 	constructor(public subSize: number, public subPhysicalSize: number, physicalSize: number, public numberSubShots: number, extraLongevity: number, colours: LoadColours, public subLoads: ShellLoad[] = []) {
 		super(EffectType.ShellOfShells, 0, physicalSize, extraLongevity, colours);
 		if (colours.colourList.length < 1){
@@ -25,7 +27,12 @@ export class BigBouqetEffect extends BurstEffect {
 		}
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "BigBouqetEffect", subLoads: this.subLoads.map(sl => sl.toParkData()) }; }
+	override toParkData(): any {
+		return {
+			...super.toParkData(),
+			subLoads: this.subLoads.map(sl => sl.toParkData())
+		};
+	}
 
 	override isValid(ctx: ValidationContext, issues: ValidationIssue[], path: string): boolean {
 		let valid = super.isValid(ctx, issues, path);
@@ -45,8 +52,8 @@ export class BigBouqetEffect extends BurstEffect {
 		return valid;
 	}
 
-	static fromParkData(effect: any, _decodeEffect: (effect: any) => Effect): BigBouqetEffect {
-		return new BigBouqetEffect(
+	static fromParkData(effect: any, _decodeEffect: (effect: any) => Effect): ShellOfShellsEffect {
+		return new ShellOfShellsEffect(
 			effect?.subSize ?? 0,
 			effect?.subPhysicalSize ?? 0,
 			effect?.physicalSize ?? 0,
@@ -55,6 +62,21 @@ export class BigBouqetEffect extends BurstEffect {
 			LoadColours.fromParkData(effect?.colours),
 			(effect?.subLoads ?? []).map((entry: any) => ShellLoad.fromParkData(entry))
 		);
+	}
+
+	override getDuration(): number {
+		// Make() always resets extraLongevity to 0 before computing each sub-shot's ascent delay (100 + up to 20).
+		const subShotDelay = 120;
+
+		let effectDuration = this.extraLongevity + this.subPhysicalSize * 35;
+		if (this.colours.pattern === "custom-load") {
+			for (const sl of this.subLoads) {
+				const subLoad = sl.runtimeLoad ?? GetLoadByName(sl.loadName);
+				effectDuration = Math.max(effectDuration, subLoad?.getDuration() ?? 0);
+			}
+		}
+
+		return subShotDelay + effectDuration;
 	}
 
 	override Make(posOri: CoordsXYZ, _velocity: CoordsXYZ): BurstEffect | undefined {

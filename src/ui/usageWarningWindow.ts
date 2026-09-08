@@ -1,7 +1,9 @@
-import { button, Colour, flexible, label, LayoutDirection, listview, store, window } from "openrct2-flexui";
+import { Colour, flexible, label, LayoutDirection, listview, store } from "openrct2-flexui";
 import type { OpenWindow } from "openrct2-flexui";
 import { UsageReference } from "../fireworks/usageChecker";
 import { getMainWindowPosition } from "./windowState";
+import { openPopupWindow } from "./popupWindows";
+import { colouredButton } from "./ColouredButton";
 
 const KIND_LABELS: Record<string, string> = {
 	load: "Load",
@@ -51,7 +53,7 @@ export function openUsageWarningWindow(
 	const listHeight = Math.max(30, Math.min(120, usages.length * 14 + 16));
 	const totalHeight = 120 + listHeight;
 
-	const popup = window({
+	handle = openPopupWindow("usage-warning", {
 		title: "Item In Use",
 		width: 400,
 		height: totalHeight,
@@ -76,35 +78,35 @@ export function openUsageWarningWindow(
 			flexible({
 				direction: LayoutDirection.Horizontal,
 				content: [
-					
-					button({
-						text: "Delete anyway and leave references",
+                    colouredButton({
+						text: "Cancel",
+						width: 70,
+						height: 22,
+						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
+						onClick: () => handle?.close(),
+					}),
+					colouredButton({
+						text: "{WHITE}Delete, leave references",
 						width: 180,
 						height: 22,
+						colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
 						onClick: () => {
 							handle?.close();
 							onLeaveIt();
 						},
 					}),
-					button({
-						text: "Delete cascading",
+					colouredButton({
+						text: "{WHITE}Delete cascading",
 						width: 120,
 						height: 22,
+						colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
 						onClick: () => {
 							handle?.close();
 							onRemoveAll();
 						},
-					}),
-                    button({
-						text: "Cancel",
-						width: 70,
-						height: 22,
-						onClick: () => handle?.close(),
-					}),
+					})
 				],
 			}),
 		],
 	});
-
-	handle = popup.open();
 }

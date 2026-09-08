@@ -11,14 +11,19 @@ import { Load } from "../../Load";
 import { GetColouredEffectSprite, sprite } from "../../../../img/images";
 
 export class RingEffect extends BurstEffect {
-	constructor(size: number, physicalSize: number, extraLongevity: number, colours: LoadColours, public azimuth: number, public tilt: number, public trail: boolean, public microburst: boolean, public trailDensity: number = 0.5, public trailWidth: number = 3) {
+	override readonly className: string = "RingEffect";
+
+	constructor(size: number, physicalSize: number, extraLongevity: number, colours: LoadColours, public azimuth: number, public tilt: number, public trail: boolean, public microburst: boolean, public trailDensity: number = 0.5, public trailWidth: number = 3, public randomAngle: boolean = false) {
 		super(EffectType.Ring, size, physicalSize, extraLongevity, colours);
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "RingEffect" }; }
-
 	static fromParkData(effect: any): RingEffect {
-		return new RingEffect(effect?.size ?? 0, effect?.physicalSize ?? 0, effect?.extraLongevity ?? 0, LoadColours.fromParkData(effect?.colours), effect?.azimuth ?? effect?.angleX ?? 0, effect?.tilt ?? effect?.angleY ?? 0, effect?.trail ?? false, effect?.microburst ?? false, effect?.trailDensity ?? 0.5, effect?.trailWidth ?? 3);
+		return new RingEffect(effect?.size ?? 0, effect?.physicalSize ?? 0, effect?.extraLongevity ?? 0, LoadColours.fromParkData(effect?.colours), effect?.azimuth ?? effect?.angleX ?? 0, effect?.tilt ?? effect?.angleY ?? 0, effect?.trail ?? false, effect?.microburst ?? false, effect?.trailDensity ?? 0.5, effect?.trailWidth ?? 3, effect?.randomAngle ?? false);
+	}
+
+	override getDuration(): number {
+		// Some colour patterns chain a second duration segment ("-transition"), so budget extra headroom.
+		return this.extraLongevity + this.physicalSize * 30;
 	}
 
 	override Make(posOri: CoordsXYZ, _velocity: CoordsXYZ): BurstEffect | undefined {
@@ -27,6 +32,11 @@ export class RingEffect extends BurstEffect {
 		let maxCircumference = this.size * Math.PI * 2;
 		let rows = maxCircumference / 2 / distance;
 
+		if (this.randomAngle) {
+			this.azimuth = Math.random() * 2 * Math.PI;
+			this.tilt = Math.random() * 2 * Math.PI;
+		}
+		//this shouldn't be possible, but just in case
 		if (this.azimuth == undefined)
 			this.azimuth = Math.random() * 2 * Math.PI;
 		if (this.tilt == undefined)

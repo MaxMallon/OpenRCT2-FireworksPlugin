@@ -1,8 +1,15 @@
 import { store } from "openrct2-flexui";
 import { SprayBurstEffect } from "../../fireworks/structures/effects/burstEffects/palmEffect";
-import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNumberRow, createSequenceDropdownRowWithReverse, normalizePatternSelection } from "./shared";
-import { openEffectWindow } from "./template";
+import { openEffectWindow , applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNumberRow, createSequenceDropdownRowWithReverse, ExplanationParagraph, normalizePatternSelection} from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
+
+const explanation: ExplanationParagraph[] = [
+	{ text: "Sprays of various colours are launced outwards from a central point.\n", height: 20 },
+	{ term: "Density", description: "Affects number of comets", height: 14 },
+	{ term: "Size", description: "Physical size of effect, affects duration\nof the effect", height: 28 },
+	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
+	{ term: "Colour Sequence", description: "The colours of sprays to use in random order", height: 14 },
+];
 
 export function openSprayBurstEffectWindow(effect: SprayBurstEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
 {
@@ -23,8 +30,9 @@ export function openSprayBurstEffectWindow(effect: SprayBurstEffect | undefined,
 	openEffectWindow({
 		title: "Spray Burst Effect",
 		width: 320,
-		height: 540,
+		height: 550,
 		saveText: isEditing ? "Update Effect" : "Add Effect",
+		explanation,
 		onClose: () => {
 			if (isReopening) {
 				isReopening = false;

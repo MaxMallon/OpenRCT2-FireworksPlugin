@@ -1,16 +1,24 @@
-import { button, compute, flexible, label, LayoutDirection, listview, OpenWindow, store, textbox, window } from "openrct2-flexui";
-import { cloneLoad, loadContainsBigBouqetEffect } from "../../fireworks/loadHelpers";
+import { Colour, compute, flexible, label, LayoutDirection, listview, OpenWindow, store, textbox, window } from "openrct2-flexui";
+import { cloneLoad } from "../../fireworks/cloneHelpers";
+import { loadContainsShellOfShellsEffect } from "../../fireworks/usageChecker";
 import { getMainWindowPosition } from "../windowState";
+import { isPopupOpen, openPopupCustom } from "../popupWindows";
+import { EFFECT_SUB_WINDOW_GROUP } from "./effectWindowTemplate";
 import { Load } from "../../fireworks/structures/Load";
+import { colouredButton } from "../ColouredButton";
 
-export function openBigBouqetLoadSelectionWindow(loads: Load[], selectedLoadNames: string[], onSelect: (load: Load) => void): void
+export function openShellOfShellsLoadSelectionWindow(loads: Load[], selectedLoadNames: string[], onSelect: (load: Load) => void): void
 {
+	if (isPopupOpen(EFFECT_SUB_WINDOW_GROUP))
+	{
+		return;
+	}
 	const search = store("");
 	const filteredLoads = compute(search, query => {
 		const normalizedQuery = query.trim().toLowerCase();
 		return loads.filter(load => {
 			const loadName = load.name.trim();
-			if (!loadName || selectedLoadNames.indexOf(loadName) >= 0 || loadContainsBigBouqetEffect(load))
+			if (!loadName || selectedLoadNames.indexOf(loadName) >= 0 || loadContainsShellOfShellsEffect(load))
 			{
 				return false;
 			}
@@ -27,7 +35,9 @@ export function openBigBouqetLoadSelectionWindow(loads: Load[], selectedLoadName
 	const mainPos = getMainWindowPosition();
 	const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
 
-	const template = window({
+	openPopupCustom(EFFECT_SUB_WINDOW_GROUP, () =>
+	{
+		const template = window({
 		title: "Select Custom Load",
 		width: 320,
 		height: 260,
@@ -67,9 +77,11 @@ export function openBigBouqetLoadSelectionWindow(loads: Load[], selectedLoadName
 				direction: LayoutDirection.Horizontal,
 				content: [
 					label({ text: "Click a load to add it.", width: "1w" }),
-					button({
+					colouredButton({
 						text: "Close",
 						width: 70,
+						height: 22,
+						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 						onClick: () => handle?.close()
 					})
 				]
@@ -77,5 +89,7 @@ export function openBigBouqetLoadSelectionWindow(loads: Load[], selectedLoadName
 		]
 	});
 
-	handle = template.open();
+		handle = template.open();
+		return handle;
+	});
 }

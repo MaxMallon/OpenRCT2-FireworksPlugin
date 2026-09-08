@@ -1,24 +1,13 @@
 import {
-    box,
-    button,
-    checkbox,
-    compute,
-    dropdown,
-    flexible,
-    groupbox,
-    label,
-    LayoutDirection,
-    listview,
-    spinner,
-    store,
-    textbox,
-    window,
-    OpenWindow
+    box, checkbox, compute, dropdown, flexible, groupbox, label, LayoutDirection, listview, store, textbox, OpenWindow, Colour
 } from "openrct2-flexui";
+import { numberInputSpinner } from "../numberInputSpinner";
+import { colouredButton } from "../ColouredButton";
 import {
     getSequenceList,
     getSequenceMap,
     getShotShow,
+    getShotShowMap,
     setShotShow,
     setEditShow,
     launchSites,
@@ -26,11 +15,16 @@ import {
     definedShows
 } from "../../fireworks/persistent";
 import { getMainWindowPosition, closeMainWindow } from "../windowState";
-import { StartShowProgramme, StopShowProgramme, StartShowSequence } from "../../fireworks/showPlayer";
+import { openPopupWindow } from "../popupWindows";
+import { StartAllEnabledShowProgrammes, StopShowProgramme, StartShowSequence } from "../../fireworks/showPlayer";
 import { showFireworksShowPlayingWindow } from "../fireworksShowPlayingWindow";
 import { buildValidationContext, formatValidationIssues, ValidationIssue } from "../../fireworks/usageChecker";
-import { InGameDate, InGameRecurringPeriod, Show, ShowTrigger, ShowTriggerKind } from "../../fireworks/structures/Show";
+import { InGameDate, InGameRecurringPeriod, Show, ShowTrigger, ShowTriggerKind, showTriggerToParkData } from "../../fireworks/structures/Show";
+import { cloneShow } from "../../fireworks/cloneHelpers";
+import { beginPaletteTestUntilIdle } from "../../fireworks/testPaletteMode";
 import { openDebuggerWindow } from "../debuggerWindow";
+import { SerializedShowEditorState } from "../../fireworks/parkStorage";
+import { confirmDiscardChanges } from "../discardChangesWindow";
 
 // ---- Schedule constants & helpers ----
 
@@ -129,22 +123,37 @@ function triggerValidationWarning(trigger: ShowTrigger, durationFrames: number):
 
 // ---- Module-level stores ----
 
-const selectedShowIndex = store<number | undefined>(undefined);
-const editedShowName = store("");
-const selectedSequenceName = store("");
-const selectedLaunchSiteName = store("");
-const musicEnabled = store(false);
-const musicRideId = store(0);
+const DEFAULT_SHOW_EDITOR = {
+    name: "",
+    sequenceName: "",
+    launchSiteName: "",
+    musicEnabled: false,
+    musicRideId: 0,
+    interrupt: true,
+    enabled: false,
+    trigger: undefined as ShowTrigger | undefined,
+    anouncement1: "",
+    anouncement2: "",
+    selectedIndex: undefined as number | undefined
+};
+
+const selectedShowIndex = store<number | undefined>(DEFAULT_SHOW_EDITOR.selectedIndex);
+const editedShowName = store(DEFAULT_SHOW_EDITOR.name);
+const selectedSequenceName = store(DEFAULT_SHOW_EDITOR.sequenceName);
+const selectedLaunchSiteName = store(DEFAULT_SHOW_EDITOR.launchSiteName);
+const musicEnabled = store(DEFAULT_SHOW_EDITOR.musicEnabled);
+const musicRideId = store(DEFAULT_SHOW_EDITOR.musicRideId);
 const ridesRevision = store(0);
-const interruptStore = store(true);
+const interruptStore = store(DEFAULT_SHOW_EDITOR.interrupt);
+const enabledStore = store(DEFAULT_SHOW_EDITOR.enabled);
 
 // Trigger for the currently edited show (only one allowed)
-const currentTrigger = store<ShowTrigger | undefined>(undefined);
+const currentTrigger = store<ShowTrigger | undefined>(DEFAULT_SHOW_EDITOR.trigger);
 const triggersRevision = store(0);
 
 // Announcements for the currently edited show
-const anouncement1Store = store("");
-const anouncement2Store = store("");
+const anouncement1Store = store(DEFAULT_SHOW_EDITOR.anouncement1);
+const anouncement2Store = store(DEFAULT_SHOW_EDITOR.anouncement2);
 
 // ---- Helpers ----
 
@@ -162,40 +171,113 @@ export function refreshShowTabRides(): void
     ridesRevision.set(ridesRevision.get() + 1);
 }
 
-function cloneShow(source: Show): Show
-{
-    return new Show(
-        source.name,
-        source.sequence,
-        source.interruptWhenTooManyParticles,
-        source.anouncement1,
-        source.anouncement2,
-        source.trigger,
-        source.music,
-        source.musicRideID,
-        source.launchTerrain
-    );
-}
-
 function getFallbackShowName(): string
 {
     return `Show ${definedShows.get().length + 1}`;
 }
 
-function resetShowEditor(): void
-{
-    editedShowName.set("");
-    selectedSequenceName.set("");
-    selectedLaunchSiteName.set("");
-    musicEnabled.set(false);
-    musicRideId.set(0);
-    interruptStore.set(true);
-    selectedShowIndex.set(undefined);
-    currentTrigger.set(undefined);
+export function getShowEditorState(): SerializedShowEditorState {
+    const show = new Show(
+        editedShowName.get(),
+        selectedSequenceName.get().trim(),
+        interruptStore.get(),
+        anouncement1Store.get(),
+        anouncement2Store.get(),
+        currentTrigger.get(),
+        musicEnabled.get(),
+        musicRideId.get(),
+        selectedLaunchSiteName.get().trim() || undefined,
+        enabledStore.get()
+    );
+    return { show: show.toParkData() };
+}
+
+export function restoreShowEditorState(state?: SerializedShowEditorState): void {
+    if (!state || !state.show) {
+        resetShowEditor();
+        return;
+    }
+    const show = Show.fromParkData(state.show);
+    selectedShowIndex.set(DEFAULT_SHOW_EDITOR.selectedIndex);
+    editedShowName.set(show.name);
+    selectedSequenceName.set(show.sequence);
+    selectedLaunchSiteName.set(show.launchTerrain ?? DEFAULT_SHOW_EDITOR.launchSiteName);
+    musicEnabled.set(show.music);
+    musicRideId.set(show.musicRideID);
+    interruptStore.set(show.interruptWhenTooManyParticles);
+    enabledStore.set(show.enabled);
+    currentTrigger.set(show.trigger);
     triggersRevision.set(triggersRevision.get() + 1);
-    anouncement1Store.set("");
-    anouncement2Store.set("");
+    anouncement1Store.set(show.anouncement1);
+    anouncement2Store.set(show.anouncement2);
+
+    if (show.name || show.sequence || show.trigger) {
+        setEditShow(cloneShow(show));
+    } else {
+        setEditShow(undefined);
+    }
+}
+
+export function resetShowEditor(): void
+{
+    editedShowName.set(DEFAULT_SHOW_EDITOR.name);
+    selectedSequenceName.set(DEFAULT_SHOW_EDITOR.sequenceName);
+    selectedLaunchSiteName.set(DEFAULT_SHOW_EDITOR.launchSiteName);
+    musicEnabled.set(DEFAULT_SHOW_EDITOR.musicEnabled);
+    musicRideId.set(DEFAULT_SHOW_EDITOR.musicRideId);
+    interruptStore.set(DEFAULT_SHOW_EDITOR.interrupt);
+    enabledStore.set(DEFAULT_SHOW_EDITOR.enabled);
+    selectedShowIndex.set(DEFAULT_SHOW_EDITOR.selectedIndex);
+    currentTrigger.set(DEFAULT_SHOW_EDITOR.trigger);
+    triggersRevision.set(triggersRevision.get() + 1);
+    anouncement1Store.set(DEFAULT_SHOW_EDITOR.anouncement1);
+    anouncement2Store.set(DEFAULT_SHOW_EDITOR.anouncement2);
     setEditShow(undefined);
+}
+
+export function isShowEditorDirty(): boolean {
+    const currentName = editedShowName.get().trim();
+    const currentSequence = selectedSequenceName.get().trim();
+    const currentSite = selectedLaunchSiteName.get().trim();
+    const currentMusicEnabled = musicEnabled.get();
+    const currentMusicRideId = musicRideId.get();
+    const currentInterrupt = interruptStore.get();
+    const currentTrig = currentTrigger.get();
+    const currentAnouncement1 = anouncement1Store.get().trim();
+    const currentAnouncement2 = anouncement2Store.get().trim();
+
+    if (!currentName) {
+        return (
+            currentSequence !== DEFAULT_SHOW_EDITOR.sequenceName ||
+            currentSite !== DEFAULT_SHOW_EDITOR.launchSiteName ||
+            currentMusicEnabled !== DEFAULT_SHOW_EDITOR.musicEnabled ||
+            currentMusicRideId !== DEFAULT_SHOW_EDITOR.musicRideId ||
+            currentInterrupt !== DEFAULT_SHOW_EDITOR.interrupt ||
+            currentTrig !== DEFAULT_SHOW_EDITOR.trigger ||
+            currentAnouncement1 !== DEFAULT_SHOW_EDITOR.anouncement1 ||
+            currentAnouncement2 !== DEFAULT_SHOW_EDITOR.anouncement2
+        );
+    }
+
+    const saved = getShotShowMap().get(currentName);
+    if (!saved) {
+        return true;
+    }
+
+    const savedSite = saved.launchTerrain ?? "";
+    const currentTriggerData = currentTrig ? showTriggerToParkData(currentTrig) : null;
+    const savedTriggerData = saved.trigger ? showTriggerToParkData(saved.trigger) : null;
+
+    return (
+        saved.sequence !== currentSequence ||
+        savedSite !== currentSite ||
+        saved.music !== currentMusicEnabled ||
+        saved.musicRideID !== currentMusicRideId ||
+        saved.interruptWhenTooManyParticles !== currentInterrupt ||
+        saved.anouncement1 !== currentAnouncement1 ||
+        saved.anouncement2 !== currentAnouncement2 ||
+        JSON.stringify(savedTriggerData) !== JSON.stringify(currentTriggerData)
+    );
 }
 
 function loadSelectedShow(index: number): void
@@ -210,6 +292,7 @@ function loadSelectedShow(index: number): void
     musicEnabled.set(show.music);
     musicRideId.set(show.musicRideID);
     interruptStore.set(show.interruptWhenTooManyParticles);
+    enabledStore.set(show.enabled);
     currentTrigger.set(show.trigger);
     triggersRevision.set(triggersRevision.get() + 1);
     anouncement1Store.set(show.anouncement1);
@@ -233,16 +316,19 @@ function addOrUpdateShow(): void
         }
     }
 
+    const trigger = currentTrigger.get();
+    const existingEnabled = existingIndex >= 0 ? getShotShow()[existingIndex].enabled : false;
     const nextShow = new Show(
         nextName,
         selectedSequenceName.get().trim(),
         interruptStore.get(),
         anouncement1Store.get(),
         anouncement2Store.get(),
-        currentTrigger.get(),
+        trigger,
         musicEnabled.get(),
         musicRideId.get(),
-        selectedLaunchSiteName.get().trim() || undefined
+        selectedLaunchSiteName.get().trim() || undefined,
+        existingEnabled && trigger !== undefined
     );
 
     if (existingIndex >= 0)
@@ -270,6 +356,37 @@ function deleteSelectedShow(): void
     resetShowEditor();
 }
 
+// Tests the show exactly as currently entered in the editor (no need to add/update first).
+function onTestShowClick(): void
+{
+    const trimmedName = editedShowName.get().trim();
+    const show = new Show(
+        trimmedName,
+        selectedSequenceName.get().trim(),
+        interruptStore.get(),
+        anouncement1Store.get(),
+        anouncement2Store.get(),
+        currentTrigger.get(),
+        musicEnabled.get(),
+        musicRideId.get(),
+        selectedLaunchSiteName.get().trim() || undefined,
+        false
+    );
+    // Validate show before testing; warn instead of playing if invalid
+    const ctx = buildValidationContext();
+    const issues: ValidationIssue[] = [];
+    if (!show.isValid(ctx, issues, `Show "${trimmedName}"`))
+    {
+        if (typeof ui !== "undefined" && typeof ui.showError === "function")
+        {
+            ui.showError("Invalid show", formatValidationIssues(issues));
+        }
+        return;
+    }
+    StartShowSequence(show);
+    beginPaletteTestUntilIdle();
+}
+
 function openSequenceSelectionWindow(): void
 {
     const search = store("");
@@ -284,8 +401,8 @@ function openSequenceSelectionWindow(): void
     let handle: OpenWindow | undefined;
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
-    const selectorWindow = window({
-        title: "Select Sequence",
+    handle = openPopupWindow("show-select-sequence", {
+        title: "Select Sequence for Show",
         width: 300,
         height: 250,
         padding: 8,
@@ -312,14 +429,15 @@ function openSequenceSelectionWindow(): void
                     handle?.close();
                 }
             }),
-            button({
+            colouredButton({
                 text: "Close",
                 width: 70,
+                height: 22,
+                colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
                 onClick: () => handle?.close()
             })
         ]
     });
-    handle = selectorWindow.open();
 }
 
 function openLaunchSiteSelectionWindow(): void
@@ -336,8 +454,8 @@ function openLaunchSiteSelectionWindow(): void
     let handle: OpenWindow | undefined;
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
-    const selectorWindow = window({
-        title: "Select Launch Site",
+    handle = openPopupWindow("show-select-location", {
+        title: "Select News Message Position",
         width: 300,
         height: 260,
         padding: 8,
@@ -367,30 +485,34 @@ function openLaunchSiteSelectionWindow(): void
             flexible({
                 direction: LayoutDirection.Horizontal,
                 content: [
-                    button({
+                    colouredButton({
                         text: "Clear",
                         width: 70,
+                        height: 22,
+                        colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
                         onClick: () => {
                             selectedLaunchSiteName.set("");
                             handle?.close();
                         }
                     }),
-                    button({
+                    colouredButton({
                         text: "Close",
                         width: 70,
+                        height: 22,
+                        colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
                         onClick: () => handle?.close()
                     })
                 ]
             })
         ]
     });
-    handle = selectorWindow.open();
 }
 
 function clearCurrentTrigger(): void
 {
     currentTrigger.set(undefined);
     triggersRevision.set(triggersRevision.get() + 1);
+    enabledStore.set(false); // can't be enabled without a trigger
 }
 
 function openAddTriggerWindow(): void
@@ -410,6 +532,23 @@ function openAddTriggerWindow(): void
     const pendingDateDay   = store(1);
     const pendingDateSel   = store<number | undefined>(undefined);
     const warningText   = store("");
+
+    const isRealTimeVisible = compute(typeIndex, t => t === 0 ? "visible" as const : "none" as const);
+    const isRecurringVisible = compute(typeIndex, t => t === 1 ? "visible" as const : "none" as const);
+    const isAnnualVisible = compute(typeIndex, t => t === 2 ? "visible" as const : "none" as const);
+
+    const GROUP_HEIGHTS = [180, 203, 255]; // Real-time interval, In-game recurring, In-game annual dates
+
+    function resizePopupForType(): void
+    {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const native = (handle as any)?.D;
+        if (!native) return;
+        const height = GROUP_HEIGHTS[typeIndex.get()];
+        native.minHeight = height;
+        native.maxHeight = height;
+        native.height = height;
+    }
 
     function buildTrigger(): ShowTrigger
     {
@@ -464,10 +603,10 @@ function openAddTriggerWindow(): void
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
 
-    const popup = window({
+    handle = openPopupWindow("show-set-trigger", {
         title: "Set Schedule Trigger",
         width: 340,
-        height: 460,
+        height: 250,
         padding: 8,
         position,
         direction: LayoutDirection.Vertical,
@@ -478,47 +617,51 @@ function openAddTriggerWindow(): void
                 items: TYPE_LABELS,
                 selectedIndex: typeIndex,
                 width: "1w",
-                onChange: idx => { typeIndex.set(idx); refreshWarning(); }
+                onChange: idx => { typeIndex.set(idx); refreshWarning(); resizePopupForType(); }
             }),
             label({ text: "" }),
 
             // ---- Real-time interval ----
             groupbox({
                 text: "Real-time interval",
+                visibility: isRealTimeVisible,
+                height: compute(typeIndex, t => t === 0 ? 44 : 0),
                 content: [
                     flexible({
                         direction: LayoutDirection.Horizontal,
                         content: [
-                            label({ text: "Every", width: 40 }),
-                            spinner({
-                                value: intervalMins,
+                            numberInputSpinner({
+                                labelText: "Every",
+                                labelWidth: 40,
+                                valueStore: intervalMins,
                                 step: 1,
                                 minimum: 1,
-                                maximum: 9999,
+                                maximum: 100,
                                 width: 70,
-                                disabled: compute(typeIndex, t => t !== 0),
+                                visibility: isRealTimeVisible,
                                 onChange: v => { intervalMins.set(v); refreshWarning(); }
                             }),
-                            label({ text: "real minutes" })
+                            label({ text: "real minutes", visibility: isRealTimeVisible })
                         ]
                     })
                 ]
             }),
-            label({ text: "" }),
 
             // ---- In-game recurring ----
             groupbox({
                 text: "In-game recurring",
+                visibility: isRecurringVisible,
+                height: compute(typeIndex, t => t === 1 ? 70 : 0),
                 content: [
                     flexible({
                         direction: LayoutDirection.Horizontal,
                         content: [
-                            label({ text: "Period:", width: 65 }),
+                            label({ text: "Period:", width: 65, visibility: isRecurringVisible }),
                             dropdown({
                                 items: PERIOD_LABELS,
                                 selectedIndex: periodIndex,
                                 width: "1w",
-                                disabled: compute(typeIndex, t => t !== 1),
+                                visibility: isRecurringVisible,
                                 onChange: idx => { periodIndex.set(idx); refreshWarning(); }
                             })
                         ]
@@ -526,14 +669,16 @@ function openAddTriggerWindow(): void
                     flexible({
                         direction: LayoutDirection.Horizontal,
                         content: [
-                            label({ text: "Day of month:", width: 85 }),
-                            spinner({
-                                value: dayOfMonth,
+                            numberInputSpinner({
+                                labelText: "Day of month:",
+                                labelWidth: 85,
+                                valueStore: dayOfMonth,
                                 step: 1,
                                 minimum: 1,
                                 maximum: DAYS_PER_MONTH,
                                 width: 70,
-                                disabled: compute(typeIndex, periodIndex, (t, p) => t !== 1 || p === 0),
+                                visibility: isRecurringVisible,
+                                disabled: compute(periodIndex, p => p === 0),
                                 onChange: v => { dayOfMonth.set(v); refreshWarning(); }
                             })
                         ]
@@ -541,23 +686,25 @@ function openAddTriggerWindow(): void
                     flexible({
                         direction: LayoutDirection.Horizontal,
                         content: [
-                            label({ text: "Month:", width: 65 }),
+                            label({ text: "Month:", width: 65, visibility: isRecurringVisible }),
                             dropdown({
                                 items: INGAME_MONTH_NAMES,
                                 selectedIndex: monthIndex,
                                 width: "1w",
-                                disabled: compute(typeIndex, periodIndex, (t, p) => t !== 1 || p !== 2),
+                                visibility: isRecurringVisible,
+                                disabled: compute(periodIndex, p => p !== 2),
                                 onChange: idx => { monthIndex.set(idx); refreshWarning(); }
                             })
                         ]
                     })
                 ]
             }),
-            label({ text: "" }),
 
             // ---- In-game annual dates ----
             groupbox({
                 text: "In-game annual dates",
+                visibility: isAnnualVisible,
+                height: compute(typeIndex, t => t === 2 ? 120 : 0),
                 content: [
                     flexible({
                         direction: LayoutDirection.Horizontal,
@@ -566,23 +713,24 @@ function openAddTriggerWindow(): void
                                 items: INGAME_MONTH_NAMES,
                                 selectedIndex: pendingDateMonth,
                                 width: "1w",
-                                disabled: compute(typeIndex, t => t !== 2),
+                                visibility: isAnnualVisible,
                                 onChange: idx => pendingDateMonth.set(idx)
                             }),
-                            spinner({
-                                value: pendingDateDay,
+                            numberInputSpinner({
+                                valueStore: pendingDateDay,
                                 step: 1,
                                 minimum: 1,
                                 maximum: DAYS_PER_MONTH,
                                 width: 60,
-                                disabled: compute(typeIndex, t => t !== 2),
+                                visibility: isAnnualVisible,
                                 onChange: v => pendingDateDay.set(v)
                             }),
-                            button({
-                                text: "Add Date",
+                            colouredButton({
+                                text: "{WHITE}Add Date",
                                 width: 75,
                                 height: 20,
-                                disabled: compute(typeIndex, t => t !== 2),
+                                colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
+                                visibility: isAnnualVisible,
                                 onClick: addPendingDate
                             })
                         ]
@@ -595,31 +743,42 @@ function openAddTriggerWindow(): void
                         width: "1w",
                         height: 50,
                         canSelect: true,
+                        visibility: isAnnualVisible,
                         selectedCell: compute(pendingDateSel, sel => sel === undefined ? null : { row: sel, column: 0 }),
                         onClick: row => pendingDateSel.set(row)
                     }),
-                    button({
-                        text: "Remove Date",
+                    colouredButton({
+                        text: "{WHITE}Remove Date",
                         width: 100,
                         height: 20,
-                        disabled: compute(typeIndex, pendingDateSel, (t, s) => t !== 2 || s === undefined),
+                        colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
+                        visibility: isAnnualVisible,
+                        disabled: compute(pendingDateSel, s => s === undefined),
                         onClick: removePendingDate
                     })
                 ]
             }),
-            label({ text: "" }),
-
             // ---- Warning ----
-            label({ text: warningText }),
+            label({ text: warningText, height: 20 }),
 
             // ---- Actions ----
             flexible({
                 direction: LayoutDirection.Horizontal,
                 content: [
-                    button({
-                        text: "Set Trigger",
+                    label({ text: "", width: "1w" }),
+                    colouredButton({
+                        text: "Cancel",
+                        width: 70,
+                        height: 22,
+                        colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
+                        onClick: () => handle?.close()
+                    }),
+                    label({ text: "", width: "1w" }),
+                    colouredButton({
+                        text: "{WHITE}Set Trigger",
                         width: 100,
                         height: 22,
+                        colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
                         onClick: () =>
                         {
                             const trigger = buildTrigger();
@@ -636,19 +795,14 @@ function openAddTriggerWindow(): void
                             handle?.close();
                         }
                     }),
-                    button({
-                        text: "Cancel",
-                        width: 70,
-                        height: 22,
-                        onClick: () => handle?.close()
-                    })
+                    label({ text: "", width: "1w" })
                 ]
             })
         ]
     });
 
     refreshWarning();
-    handle = popup.open();
+    resizePopupForType();
 }
 
 export function createShowTab()
@@ -680,23 +834,12 @@ export function createShowTab()
                                         direction: LayoutDirection.Horizontal,
                                         content: [
                                             label({ text: compute(selectedSequenceName, name => `Sequence: ${name.trim() || "[None]"}`), width: "1w" }),
-                                            button({
+                                            colouredButton({
                                                 text: "Select Sequence",
                                                 width: 120,
                                                 height: 20,
+                                                colour: Colour.Black, colourDark: Colour.Black, colourLight: Colour.Grey,
                                                 onClick: openSequenceSelectionWindow
-                                            })
-                                        ]
-                                    }),
-                                    flexible({
-                                        direction: LayoutDirection.Horizontal,
-                                        content: [
-                                            label({ text: compute(selectedLaunchSiteName, name => `Location: ${name.trim() || "[None]"}`), width: "1w" }),
-                                            button({
-                                                text: "Select Location",
-                                                width: 120,
-                                                height: 20,
-                                                onClick: openLaunchSiteSelectionWindow
                                             })
                                         ]
                                     }),
@@ -731,9 +874,14 @@ export function createShowTab()
                                         ]
                                     }),
                                     checkbox({
-                                        text: "Interrupt when too many particles",
+                                        text: "Retry misfires due to particle limits and delay sequence",
                                         isChecked: interruptStore,
                                         onChange: value => interruptStore.set(value)
+                                    }),
+                                    checkbox({
+                                        text: "Skip misfires due to particle limits and keep sync",
+                                        isChecked: compute(interruptStore, v => !v),
+                                        onChange: value => interruptStore.set(!value)
                                     }),
                                     // ---- Schedule / triggers ----
                                     groupbox({
@@ -751,16 +899,18 @@ export function createShowTab()
                                             flexible({
                                                 direction: LayoutDirection.Horizontal,
                                                 content: [
-                                                    button({
+                                                    colouredButton({
                                                         text: "Set Trigger",
                                                         width: 90,
                                                         height: 20,
+                                                        colour: Colour.Black, colourDark: Colour.Black, colourLight: Colour.Grey,
                                                         onClick: openAddTriggerWindow
                                                     }),
-                                                    button({
+                                                    colouredButton({
                                                         text: "Clear",
                                                         width: 55,
                                                         height: 20,
+                                                        colour: Colour.Black, colourDark: Colour.Black, colourLight: Colour.Grey,
                                                         disabled: compute(triggersRevision, () => currentTrigger.get() === undefined),
                                                         onClick: clearCurrentTrigger
                                                     }),
@@ -777,42 +927,83 @@ export function createShowTab()
                                         ]
                                     }),
                                     // ---- Announcements ----
-                                    label({ text: "News announcement 5 days before show (date triggers) / 1 min before (interval):" }),
+                                    label({ text: "News announcement ~1 min before show (disabled if empty):" }),
                                     textbox({
                                         text: anouncement1Store,
                                         width: "1w",
                                         maxLength: 255,
                                         onChange: v => anouncement1Store.set(v)
                                     }),
-                                    label({ text: "News announcement at start of show:" }),
+                                    label({ text: "News announcement at start of show (disabled if empty):" }),
                                     textbox({
                                         text: anouncement2Store,
                                         width: "1w",
                                         maxLength: 255,
                                         onChange: v => anouncement2Store.set(v)
                                     }),
+                                    flexible({
+                                        direction: LayoutDirection.Horizontal,
+                                        content: [
+                                            label({ text: compute(selectedLaunchSiteName, name => `Location for news message locator: ${name.trim() || "[None]"}`), width: "1w" })
+                                        ]
+                                    }),
+                                    // ---- Test / Stop controls ----
+                                    flexible({
+                                        direction: LayoutDirection.Horizontal,
+                                        content: [
+                                            colouredButton({
+                                                text: "Select Location",
+                                                width: 120,
+                                                height: 22,
+                                                colour: Colour.Black, colourDark: Colour.Black, colourLight: Colour.Grey,
+                                                onClick: openLaunchSiteSelectionWindow
+                                            }),
+                                            label({ text: "", width: "1w" }),
+                                            colouredButton({
+                                                text: "{WHITE}Test Show",
+                                                width: 80,
+                                                height: 22,
+                                                colour: Colour.LightOrange, colourDark: Colour.DarkOrange, colourLight: Colour.OrangeLight,
+                                                onClick: onTestShowClick
+                                            }),
+                                            colouredButton({
+                                                text: "{RED}Stop",
+                                                width: 40,
+                                                height: 22,
+                                                colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
+                                                onClick: () => StopShowProgramme()
+                                            })
+                                        ]
+                                    }),
                                     // ---- Actions ----
                                     flexible({
                                         direction: LayoutDirection.Horizontal,
                                         content: [
-                                            button({
-                                                text: compute(selectedShowIndex, idx => idx !== undefined ? "Update Show" : "Add Show"),
+                                            colouredButton({
+                                                text: compute(selectedShowIndex, idx => idx !== undefined ? "{WHITE}Update Show" : "{WHITE}Add Show"),
                                                 width: 100,
-                                                height: 20,
+                                                height: 22,
+                                                colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
                                                 onClick: addOrUpdateShow
                                             }),
-                                            button({
-                                                text: "New",
+                                            colouredButton({
+                                                text: "{WHITE}New",
                                                 width: 50,
-                                                height: 20,
-                                                onClick: resetShowEditor
+                                                height: 22,
+                                                colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
+                                                onClick: () => confirmDiscardChanges(isShowEditorDirty, resetShowEditor)
                                             }),
-                                            button({
-                                                text: "Delete Show",
+                                            colouredButton({
+                                                text: "{WHITE}Delete Show",
                                                 width: 90,
-                                                height: 20,
+                                                height: 22,
+                                                colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
                                                 onClick: deleteSelectedShow
-                                            })
+                                            }),
+                                            label({ text: "", width: "1w" }),
+                                            colouredButton({ text: "{BLACK}Debugger", width: 70, height: 22,
+                                                colour: Colour.Yellow, colourDark: Colour.DarkYellow, colourLight: Colour.BrightYellow,
+                                                onClick: openDebuggerWindow })
                                         ]
                                     }),
                                 ]
@@ -827,94 +1018,78 @@ export function createShowTab()
                                 padding: 6,
                                 text: "Defined Shows",
                                 content: listview({
-                                    items: compute(definedShows, shows => shows.map(s => ["{WHITE}" + s.name])),
-                                    columns: [{ header: "{WHITE}Name", width: "1w" }],
+                                    items: compute(definedShows, shows => shows.map(s => ["{WHITE}" + s.name, s.enabled ? "{GREEN}Y" : ""])),
+                                    columns: [{ header: "{WHITE}Name", width: "1w" }, { header: "{WHITE}On", width: 32 }],
                                     width: 170,
                                     height: "1w",
                                     canSelect: true,
                                     selectedCell: compute(selectedShowIndex, index => index === undefined ? null : { row: index, column: 0 }),
-                                    onClick: row => loadSelectedShow(row)
+                                    onClick: row => confirmDiscardChanges(isShowEditorDirty, () => loadSelectedShow(row))
                                 })
                             }),
-                            button({
-                                text: compute(selectedShowIndex, idx =>
-                                    idx !== undefined ? `Start: ${definedShows.get()[idx]?.name ?? ""}` : "Start Show Programme"
-                                ),
-                                width: "1w",
+                            colouredButton({
+                                text: compute(selectedShowIndex, definedShows, (idx, shows) => {
+                                    if (idx === undefined) return "Selected show {GREY}N/A";
+                                    const show = shows[idx];
+                                    if (!show) return "Selected show {GREY}N/A";
+                                    return show.enabled ? "Selected show {GREEN}ENABLED" : "Selected show {RED}DISABLED";
+                                }),
+                                width: 206,
                                 height: 22,
+                                colour: Colour.Black, colourDark: Colour.Black, colourLight: Colour.Grey,
                                 disabled: compute(selectedShowIndex, idx => idx === undefined),
+                                onClick: () => {
+                                    const idx = selectedShowIndex.get();
+                                    if (typeof idx !== "number") return;
+                                    const shows = getShotShow().map(cloneShow);
+                                    const show = shows[idx];
+                                    if (!show) return;
+                                    const newEnabled = !show.enabled && show.trigger !== undefined;
+                                    shows[idx] = new Show(
+                                        show.name,
+                                        show.sequence,
+                                        show.interruptWhenTooManyParticles,
+                                        show.anouncement1,
+                                        show.anouncement2,
+                                        show.trigger,
+                                        show.music,
+                                        show.musicRideID,
+                                        show.launchTerrain,
+                                        newEnabled
+                                    );
+                                    setShotShow(shows.map(cloneShow));
+                                    enabledStore.set(newEnabled);
+                                }
+                            }),
+                            colouredButton({
+                                text: "{BLACK}Start Show Programme",
+                                width: 206,
+                                height: 44,
+                                colour: Colour.SaturatedGreenLight, colourDark: Colour.SaturatedGreen, colourLight: Colour.BrightGreen,
                                 onClick: () =>
                                 {
-                                    const name = editedShowName.get().trim();
-                                    if (!name) return;
-                                    // Validate show before starting
-                                    const showToStart = new Show(
-                                        name,
-                                        selectedSequenceName.get().trim(),
-                                        interruptStore.get(),
-                                        anouncement1Store.get(),
-                                        anouncement2Store.get(),
-                                        currentTrigger.get(),
-                                        musicEnabled.get(),
-                                        musicRideId.get(),
-                                        selectedLaunchSiteName.get().trim() || undefined
-                                    );
-                                    const ctx = buildValidationContext();
-                                    const issues: ValidationIssue[] = [];
-                                    if (!showToStart.isValid(ctx, issues, `Show "${name}"`))
+                                    const enabledShows = getShotShow().filter(s => s.enabled && s.trigger);
+                                    if (enabledShows.length === 0)
                                     {
                                         if (typeof ui !== "undefined" && typeof ui.showError === "function")
-                                        {
-                                            ui.showError("Invalid show", formatValidationIssues(issues));
-                                        }
+                                            ui.showError("No enabled shows", "Enable at least one show with a trigger to start the programme.");
                                         return;
                                     }
-                                    StartShowProgramme(name);
+                                    const ctx = buildValidationContext();
+                                    const issues: ValidationIssue[] = [];
+                                    for (const show of enabledShows)
+                                        show.isValid(ctx, issues, `Show "${show.name}"`);
+                                    if (issues.length > 0)
+                                    {
+                                        if (typeof ui !== "undefined" && typeof ui.showError === "function")
+                                            ui.showError("Invalid show configuration", formatValidationIssues(issues));
+                                        return;
+                                    }
+                                    StartAllEnabledShowProgrammes();
                                     closeMainWindow();
                                     showFireworksShowPlayingWindow();
                                 }
-                            }),
-                            button({
-                                text: "Test Show Now",
-                                width: "1w",
-                                height: 22,
-                                disabled: compute(selectedShowIndex, idx => idx === undefined),
-                                onClick: () =>
-                                {
-                                    const trimmedName = editedShowName.get().trim();
-                                    const show = new Show(
-                                        trimmedName,
-                                        selectedSequenceName.get().trim(),
-                                        interruptStore.get(),
-                                        anouncement1Store.get(),
-                                        anouncement2Store.get(),
-                                        currentTrigger.get(),
-                                        musicEnabled.get(),
-                                        musicRideId.get(),
-                                        selectedLaunchSiteName.get().trim() || undefined
-                                    );
-                                    // Validate show before testing
-                                    const ctx = buildValidationContext();
-                                    const issues: ValidationIssue[] = [];
-                                    if (!show.isValid(ctx, issues, `Show "${trimmedName}"`))
-                                    {
-                                        if (typeof ui !== "undefined" && typeof ui.showError === "function")
-                                        {
-                                            ui.showError("Invalid show", formatValidationIssues(issues));
-                                        }
-                                        return;
-                                    }
-                                    StartShowSequence(show);
-                                }
-                            }),
-                            button({
-                                text: "Stop",
-                                width: "1w",
-                                height: 22,
-                                onClick: () => StopShowProgramme()
-                            }),
-                            button({ text: "Debugger", width: "1w",
-                                height: 22, onClick: openDebuggerWindow })
+                            })
                         ]})
                     ]
                 })

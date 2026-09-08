@@ -1,6 +1,8 @@
 import { Load } from "./Load";
+import { PersistentDataObject } from "./PersistentDataObject";
 
-export class ShellLoad {
+export class ShellLoad extends PersistentDataObject {
+    readonly className: string = "ShellLoad";
     public static readonly explodeAtEnd = -1;
 
     constructor(
@@ -8,13 +10,15 @@ export class ShellLoad {
         public timeTillExplode: number = ShellLoad.explodeAtEnd, //Time since launch of shot.
         public particle: CrashedVehicleParticle | undefined = undefined,
         public runtimeLoad?: Load // Not persisted; used by the player for anonymous/inline loads
-    ) { }
+    ) {
+        super();
+    }
 
-    toParkData(): any {
+    override toParkData(): any {
         return {
-            className: "ShellLoad",
-            loadName: this.loadName,
-            timeTillExplode: this.timeTillExplode
+            ...super.toParkData(),
+            particle: undefined,
+            runtimeLoad: undefined
         };
     }
 

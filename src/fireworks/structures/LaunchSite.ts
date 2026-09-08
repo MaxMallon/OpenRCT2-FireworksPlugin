@@ -1,15 +1,20 @@
-export class LaunchSite
+import { PersistentDataObject } from "./PersistentDataObject";
+
+export class LaunchSite extends PersistentDataObject
 {
+    readonly className: string = "LaunchSite";
+
     constructor(
         public name: string, 
         public position: CoordsXYZ,
         public entityId: number | undefined
-    ) {}
+    ) {
+        super();
+    }
 
-    toParkData(): any {
+    override toParkData(): any {
         return {
-            className: "LaunchSite",
-            name: this.name,
+            ...super.toParkData(),
             position: { x: this.position.x, y: this.position.y, z: this.position.z },
             entityId: this.entityId
         };

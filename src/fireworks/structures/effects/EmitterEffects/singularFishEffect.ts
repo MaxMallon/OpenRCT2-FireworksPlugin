@@ -4,16 +4,21 @@ import { EmitterEffect, EffectType } from "../../Effect";
 
 export class SingularFishEffect extends EmitterEffect
 {
+	override readonly className: string = "SingularFishEffect";
+
 	constructor(timeLeft: number, public timeTillAccelerationLeft: number, public colour: Colour, public direction: CoordsXYZ, public accelerationLength: number, public totalAccelerationLength: number, public acceleration: number, public particle: CrashedVehicleParticle)
 	{
 		super(EffectType.SingularFish, timeLeft, timeLeft, 0 as unknown as LoadColours, { x: particle.x, y: particle.y, z: particle.z });
 	}
 
-	override toParkData(): any { return { ...super.toParkData(), className: "SingularFishEffect" }; }
+	override toParkData(): any { return { ...super.toParkData(), particle: undefined, particleId: this.particle?.id ?? -1 }; }
 
 	static fromParkData(effect: any): SingularFishEffect
 	{
-		return new SingularFishEffect(effect?.timeLeft ?? 0, effect?.timeTillAccelerationLeft ?? 0, effect?.colour ?? Colour.Invisible, effect?.direction ?? { x: 0, y: 0, z: 0 }, effect?.accelerationLength ?? 0, effect?.totalAccelerationLength ?? 0, effect?.acceleration ?? 0, effect?.particle);
+		// Use saved position as a stand-in coords object; particle is re-linked by the caller.
+		const pos = effect?.position ?? { x: 0, y: 0, z: 0 };
+		const dummy = { x: pos.x, y: pos.y, z: pos.z } as CrashedVehicleParticle;
+		return new SingularFishEffect(effect?.timeLeft ?? 0, effect?.timeTillAccelerationLeft ?? 0, effect?.colour ?? Colour.Invisible, effect?.direction ?? { x: 0, y: 0, z: 0 }, effect?.accelerationLength ?? 0, effect?.totalAccelerationLength ?? 0, effect?.acceleration ?? 0, dummy);
 	}
 
 	override Make(_posOri: CoordsXYZ, _velocity: CoordsXYZ): EmitterEffect | undefined
@@ -34,10 +39,7 @@ export class SingularFishEffect extends EmitterEffect
 		if (this.accelerationLength === this.totalAccelerationLength) {
 			try { this.particle.colours = { body: this.colour, trim: this.colour }; } catch { /* particle gone */ }
 		}
-		// Per-tick: ramp particle acceleration along the swim direction using a bell-curve
-		// envelope (sin(t*PI)). We ADD to existing acceleration rather than replacing it,
-		// so the fish continues on its original arc while gradually curving sideways.
-		// The z component is preserved so the counterGravity from launch is not disturbed.
+		// Slowly change direction with the acceleration
 		this.accelerationLength--;
 		const t = (this.totalAccelerationLength - this.accelerationLength) / this.totalAccelerationLength;
 		const accelMag = this.acceleration * Math.sin(t * Math.PI);

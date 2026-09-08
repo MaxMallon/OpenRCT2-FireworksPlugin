@@ -1,6 +1,7 @@
 import { GetGroundEffectByName, GetShellByName } from "../persistent";
 import { ValidationContext, ValidationIssue } from "../usageChecker";
 import { Firework, Shell } from "./Firework";
+import { PersistentDataObject } from "./PersistentDataObject";
 
 export type SequenceEntryItem = Firework | Sequence;
 export enum SequenceItemType {
@@ -10,7 +11,9 @@ export enum SequenceItemType {
 }
 
 
-export class SequenceEntry {
+export class SequenceEntry extends PersistentDataObject {
+    readonly className: string = "SequenceEntry";
+
     constructor(
         public itemName: string,
         public itemType: SequenceItemType,
@@ -18,16 +21,14 @@ export class SequenceEntry {
         public cumulativeTimeTillLight: number = 0, //Frames since the start of the root sequence/show.
         public nextItemAfterEnd: boolean = true, // Only relevant for Sequence type entries; the next item's delay counts from end rather than start
         public runtimeItem?: SequenceEntryItem // Not persisted; used by the player for direct runtime items
-    ) { }
+    ) {
+        super();
+    }
 
-    toParkData(): any {
+    override toParkData(): any {
         return {
-            className: "SequenceEntry",
-            itemName: this.itemName,
-            itemType: this.itemType,
-            timeTillLight: this.timeTillLight,
-            cumulativeTimeTillLight: this.cumulativeTimeTillLight,
-            nextItemAfterEnd: this.nextItemAfterEnd
+            ...super.toParkData(),
+            runtimeItem: undefined
         };
     }
 
@@ -52,18 +53,20 @@ export class SequenceEntry {
         }}
 }
 
-export class Sequence {
+export class Sequence extends PersistentDataObject {
+    readonly className: string = "Sequence";
+
     constructor(
         public name: string,
         public items: SequenceEntry[] = []
     ) {
+        super();
         this.recalculateCumulativeTimes();
     }
 
-    toParkData(): any {
+    override toParkData(): any {
         return {
-            className: "Sequence",
-            name: this.name,
+            ...super.toParkData(),
             items: this.items.map(entry => entry.toParkData())
         };
     }

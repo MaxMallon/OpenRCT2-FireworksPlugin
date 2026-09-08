@@ -1,8 +1,4 @@
-
-
-// ---- Module-level state ----
-
-import { store, compute, OpenWindow, window, LayoutDirection, label, textbox, listview, button, flexible, dropdown, groupbox, box, checkbox, Colour } from "openrct2-flexui";
+import { store, compute, OpenWindow, LayoutDirection, label, textbox, listview, flexible, dropdown, groupbox, box, checkbox, Colour } from "openrct2-flexui";
 import { LoadFireworks, Play, Stop, flattenScheduledEntryToShots } from "../../fireworks/fireworksEffectsPlayer";
 import { ResetCounts } from "../../fireworks/particleSpawner";
 import { getEditSequence, setEditSequence, resolveSequence, getSequenceList, setSequenceList, getShellList, getGroundEffectList, effectTick, definedSequences } from "../../fireworks/persistent";
@@ -12,20 +8,48 @@ import { findSequenceUsages, removeItemFromSequences, removeSequenceFromShows, b
 import { openDebuggerWindow } from "../debuggerWindow";
 import { openUsageWarningWindow } from "../usageWarningWindow";
 import { getMainWindowPosition } from "../windowState";
+import { makePopupGroupSwitchable, openPopupWindow } from "../popupWindows";
+import { beginPaletteTestUntilIdle } from "../../fireworks/testPaletteMode";
+import { colouredButton } from "../ColouredButton";
+import { SerializedSequenceEditorState } from "../../fireworks/parkStorage";
+import { confirmDiscardChanges } from "../discardChangesWindow";
+import { cloneSequence } from "../../fireworks/cloneHelpers";
 
-const selectedSequenceIndex = store<number | undefined>(undefined);
-const editedSequenceName = store("");
-const editedSequenceItems = store<SequenceEntry[]>([]);
-const lockOnTime = store(false); // false = lock delay mode, true = lock time mode
-const entryEditTimeText = store("");
-const entryEditDelayText = store("");
-const entryEditIndexText = store("");
-const entryEditItemLabel = store("[Empty]");
-const isDeleteMode = store(false);
-const isExpandedView = store(false);
+/** Group for the sequence tab's "add item" pickers: only one open at a time, opening another switches to it. */
+const SEQUENCE_PICKER_GROUP = "sequence-picker";
+makePopupGroupSwitchable(SEQUENCE_PICKER_GROUP);
+
+const DEFAULT_SEQUENCE_EDITOR = {
+    name: "",
+    items: [] as SequenceEntry[],
+    selectedIndex: undefined as number | undefined,
+    selectedEntryIndex: undefined as number | undefined,
+    selectedExpandedIndex: undefined as number | undefined,
+    isDeleteMode: false,
+    lockOnTime: false,
+    entryEditTimeText: "",
+    entryEditDelayText: "",
+    entryEditIndexText: "",
+    entryEditItemLabel: "[Empty]",
+    entryEditItemName: undefined as string | undefined,
+    entryEditItemType: undefined as SequenceItemType | undefined,
+    entryEditNextItemAfterEnd: true,
+    isExpandedView: false
+};
+
+const selectedSequenceIndex = store<number | undefined>(DEFAULT_SEQUENCE_EDITOR.selectedIndex);
+const editedSequenceName = store(DEFAULT_SEQUENCE_EDITOR.name);
+const editedSequenceItems = store<SequenceEntry[]>(DEFAULT_SEQUENCE_EDITOR.items);
+const lockOnTime = store(DEFAULT_SEQUENCE_EDITOR.lockOnTime); // false = lock delay mode, true = lock time mode
+const entryEditTimeText = store(DEFAULT_SEQUENCE_EDITOR.entryEditTimeText);
+const entryEditDelayText = store(DEFAULT_SEQUENCE_EDITOR.entryEditDelayText);
+const entryEditIndexText = store(DEFAULT_SEQUENCE_EDITOR.entryEditIndexText);
+const entryEditItemLabel = store(DEFAULT_SEQUENCE_EDITOR.entryEditItemLabel);
+const isDeleteMode = store(DEFAULT_SEQUENCE_EDITOR.isDeleteMode);
+const isExpandedView = store(DEFAULT_SEQUENCE_EDITOR.isExpandedView);
 const playingRelTick = store(-1); // -1 = not playing; >=0 = ticks since test started
-const selectedEntryIndex = store<number | undefined>(undefined);
-const selectedExpandedIndex = store<number | undefined>(undefined);
+const selectedEntryIndex = store<number | undefined>(DEFAULT_SEQUENCE_EDITOR.selectedEntryIndex);
+const selectedExpandedIndex = store<number | undefined>(DEFAULT_SEQUENCE_EDITOR.selectedExpandedIndex);
 const playStartRow = store<number>(0); // 0-based index of the first item being played
 const isPlaying = compute(playingRelTick, tick => tick >= 0);
 const sequencesSearch = store("");
@@ -35,13 +59,29 @@ const filteredSequences = compute(sequencesSearch, definedSequences, () => {
     if (!q) return all;
     return all.filter(s => s.name.trim().toLowerCase().indexOf(q) === 0);
 });
-const textColourNormal = "{PALEGOLD}";
-const textColourPlaying = "{GREY}";
+const textColourNormal = "{PALEGOLD}"; //text and normal buttons
+const textColour2Normal = "{WHITE}"; //coloured buttons
+const textColourPlaying = "{GREY}"; //all buttons when disabled
 
-let entryEditItemName: string | undefined;
-let entryEditItemType: SequenceItemType | undefined;
-let entryEditNextItemAfterEnd: boolean = true;
+let entryEditItemName: string | undefined = DEFAULT_SEQUENCE_EDITOR.entryEditItemName;
+let entryEditItemType: SequenceItemType | undefined = DEFAULT_SEQUENCE_EDITOR.entryEditItemType;
+let entryEditNextItemAfterEnd: boolean = DEFAULT_SEQUENCE_EDITOR.entryEditNextItemAfterEnd;
 let playTickSubscription: { dispose(): void } | undefined;
+
+// Remembers the last shell/ground effect/sequence picked, so "Same as Last" can reuse it.
+let lastUsedItemName: string | undefined = undefined;
+let lastUsedItemType: SequenceItemType | undefined = undefined;
+let lastUsedItemLabel: string = DEFAULT_SEQUENCE_EDITOR.entryEditItemLabel;
+let lastUsedNextItemAfterEnd: boolean = DEFAULT_SEQUENCE_EDITOR.entryEditNextItemAfterEnd;
+const hasLastUsedItem = store(false);
+
+function setLastUsedItem(name: string, type: SequenceItemType, label: string, nextItemAfterEnd: boolean): void {
+    lastUsedItemName = name;
+    lastUsedItemType = type;
+    lastUsedItemLabel = label;
+    lastUsedNextItemAfterEnd = nextItemAfterEnd;
+    hasLastUsedItem.set(true);
+}
 
 // ---- Short time format ----
 
@@ -120,14 +160,6 @@ function parseTimeString(input: string): number | undefined {
     return (minutes * 60 + seconds) * 40 + ticks;
 }
 
-// ---- Clone helpers ----
-
-function cloneSequence(seq: Sequence): Sequence {
-    const cloned = new Sequence(seq.name, []);
-    cloned.items = seq.items.map(e => new SequenceEntry(e.itemName, e.itemType, e.timeTillLight, e.cumulativeTimeTillLight, e.nextItemAfterEnd));
-    return cloned;
-}
-
 // ---- Sync helpers ----
 
 function syncEditorItems(): void {
@@ -135,23 +167,95 @@ function syncEditorItems(): void {
 }
 
 function resetEntryEditor(): void {
-    entryEditTimeText.set("");
-    entryEditDelayText.set("");
-    entryEditIndexText.set("");
-    entryEditItemLabel.set("[Empty]");
-    entryEditItemName = undefined;
-    entryEditItemType = undefined;
-    entryEditNextItemAfterEnd = true;
+    entryEditTimeText.set(DEFAULT_SEQUENCE_EDITOR.entryEditTimeText);
+    entryEditDelayText.set(DEFAULT_SEQUENCE_EDITOR.entryEditDelayText);
+    entryEditIndexText.set(DEFAULT_SEQUENCE_EDITOR.entryEditIndexText);
+    entryEditItemLabel.set(DEFAULT_SEQUENCE_EDITOR.entryEditItemLabel);
+    entryEditItemName = DEFAULT_SEQUENCE_EDITOR.entryEditItemName;
+    entryEditItemType = DEFAULT_SEQUENCE_EDITOR.entryEditItemType;
+    entryEditNextItemAfterEnd = DEFAULT_SEQUENCE_EDITOR.entryEditNextItemAfterEnd;
 }
 
-function resetSequenceEditor(): void {
-    setEditSequence(new Sequence(""));
-    editedSequenceName.set("");
-    selectedSequenceIndex.set(undefined);
-    selectedEntryIndex.set(undefined);
-    isDeleteMode.set(false);
+export function getSequenceEditorState(): SerializedSequenceEditorState {
+    const sequence = getEditSequence();
+    return {
+        sequence: sequence ? { ...sequence.toParkData(), name: editedSequenceName.get() } : undefined,
+        lockOnTime: lockOnTime.get(),
+        entryEditTimeText: entryEditTimeText.get(),
+        entryEditDelayText: entryEditDelayText.get(),
+        entryEditIndexText: entryEditIndexText.get(),
+        entryEditItemLabel: entryEditItemLabel.get(),
+        entryEditItemName: entryEditItemName,
+        entryEditItemType: entryEditItemType,
+        entryEditNextItemAfterEnd: entryEditNextItemAfterEnd,
+        isDeleteMode: isDeleteMode.get(),
+        isExpandedView: isExpandedView.get(),
+        lastUsedItemName: lastUsedItemName,
+        lastUsedItemType: lastUsedItemType,
+        lastUsedItemLabel: lastUsedItemLabel,
+        lastUsedNextItemAfterEnd: lastUsedNextItemAfterEnd
+    };
+}
+
+export function restoreSequenceEditorState(state?: SerializedSequenceEditorState): void {
+    if (!state) {
+        resetSequenceEditor();
+        return;
+    }
+    const seq = Sequence.fromParkData(state.sequence);
+    seq.recalculateCumulativeTimes(0, resolveSequence);
+    setEditSequence(seq);
+    editedSequenceName.set(seq.name);
+    selectedSequenceIndex.set(DEFAULT_SEQUENCE_EDITOR.selectedIndex);
+    selectedEntryIndex.set(DEFAULT_SEQUENCE_EDITOR.selectedEntryIndex);
+    selectedExpandedIndex.set(DEFAULT_SEQUENCE_EDITOR.selectedExpandedIndex);
+    syncEditorItems();
+    lockOnTime.set(typeof state.lockOnTime === "boolean" ? state.lockOnTime : DEFAULT_SEQUENCE_EDITOR.lockOnTime);
+    entryEditTimeText.set(state.entryEditTimeText ?? DEFAULT_SEQUENCE_EDITOR.entryEditTimeText);
+    entryEditDelayText.set(state.entryEditDelayText ?? DEFAULT_SEQUENCE_EDITOR.entryEditDelayText);
+    entryEditIndexText.set(state.entryEditIndexText ?? DEFAULT_SEQUENCE_EDITOR.entryEditIndexText);
+    entryEditItemLabel.set(state.entryEditItemLabel ?? DEFAULT_SEQUENCE_EDITOR.entryEditItemLabel);
+    entryEditItemName = state.entryEditItemName !== undefined ? state.entryEditItemName : DEFAULT_SEQUENCE_EDITOR.entryEditItemName;
+    entryEditItemType = (state.entryEditItemType as SequenceItemType | undefined) ?? DEFAULT_SEQUENCE_EDITOR.entryEditItemType;
+    entryEditNextItemAfterEnd = typeof state.entryEditNextItemAfterEnd === "boolean" ? state.entryEditNextItemAfterEnd : DEFAULT_SEQUENCE_EDITOR.entryEditNextItemAfterEnd;
+    isDeleteMode.set(typeof state.isDeleteMode === "boolean" ? state.isDeleteMode : DEFAULT_SEQUENCE_EDITOR.isDeleteMode);
+    isExpandedView.set(typeof state.isExpandedView === "boolean" ? state.isExpandedView : DEFAULT_SEQUENCE_EDITOR.isExpandedView);
+    lastUsedItemName = state.lastUsedItemName;
+    lastUsedItemType = state.lastUsedItemType as SequenceItemType | undefined;
+    lastUsedItemLabel = state.lastUsedItemLabel ?? DEFAULT_SEQUENCE_EDITOR.entryEditItemLabel;
+    lastUsedNextItemAfterEnd = typeof state.lastUsedNextItemAfterEnd === "boolean" ? state.lastUsedNextItemAfterEnd : DEFAULT_SEQUENCE_EDITOR.entryEditNextItemAfterEnd;
+    hasLastUsedItem.set(lastUsedItemName !== undefined && lastUsedItemType !== undefined);
+}
+
+export function resetSequenceEditor(): void {
+    setEditSequence(new Sequence(DEFAULT_SEQUENCE_EDITOR.name));
+    editedSequenceName.set(DEFAULT_SEQUENCE_EDITOR.name);
+    selectedSequenceIndex.set(DEFAULT_SEQUENCE_EDITOR.selectedIndex);
+    selectedEntryIndex.set(DEFAULT_SEQUENCE_EDITOR.selectedEntryIndex);
+    selectedExpandedIndex.set(DEFAULT_SEQUENCE_EDITOR.selectedExpandedIndex);
+    isDeleteMode.set(DEFAULT_SEQUENCE_EDITOR.isDeleteMode);
+    lockOnTime.set(DEFAULT_SEQUENCE_EDITOR.lockOnTime);
+    isExpandedView.set(DEFAULT_SEQUENCE_EDITOR.isExpandedView);
     syncEditorItems();
     resetEntryEditor();
+}
+
+export function isSequenceEditorDirty(): boolean {
+    const currentName = editedSequenceName.get().trim();
+    const currentItems = getEditSequence()?.items ?? [];
+
+    if (!currentName) {
+        return currentItems.length > DEFAULT_SEQUENCE_EDITOR.items.length;
+    }
+
+    const saved = resolveSequence(currentName);
+    if (!saved) {
+        return true;
+    }
+
+    const currentData = currentItems.map(e => e.toParkData());
+    const savedData = saved.items.map(e => e.toParkData());
+    return JSON.stringify(currentData) !== JSON.stringify(savedData);
 }
 
 function loadSelectedSequence(index: number): void {
@@ -436,7 +540,7 @@ function openConfirmDeleteWindow(itemLabel: string, onConfirm: () => void): void
         ? { x: mainPos.x + 40, y: mainPos.y + 40 }
         : "center" as const;
 
-    const popup = window({
+    handle = openPopupWindow("sequence-delete-confirm", {
         title: "Delete Sequence",
         width: 300,
         height: 90,
@@ -452,36 +556,45 @@ function openConfirmDeleteWindow(itemLabel: string, onConfirm: () => void): void
                     flexible({
                         direction: LayoutDirection.Horizontal,
                         content: [
-                            button({
-                                text: "Yes",
+                            label({ text: "", width: "1w" }),
+                            colouredButton({
+                                text: "{WHITE}Yes",
                                 width: 80,
                                 height: 22,
+                                colour: Colour.SaturatedRed,
+                                colourDark: Colour.BordeauxRedDark,
+                                colourLight: Colour.BrightRed,
                                 onClick: () => {
                                     handle?.close();
                                     onConfirm();
                                 }
                             }),
-                            button({
+                            label({ text: "", width: "1w" }),
+                            colouredButton({
                                 text: "Cancel",
                                 width: 80,
                                 height: 22,
+                                colour: Colour.Grey,
+                                colourDark: Colour.Black,
+                                colourLight: Colour.White,
                                 onClick: () => handle?.close()
-                            })
+                            }),
+                            label({ text: "", width: "1w" })
                         ]
                     })
                 ]
             }),
-            
+
         ]
     });
-    handle = popup.open();
 }
 
 // ---- Test sequence ----
 
-function onPlaySequenceClick(): void {
+function onPlayFromIndexClick(requestedStartRow?: number): void {
     if (!validateSequenceEditor()) return;
     const seq = getEditSequence()!;
+    const startRow = requestedStartRow ?? selectedEntryIndex.get();
 
     // Validate all named references before playing
     const ctx = buildValidationContext();
@@ -491,63 +604,21 @@ function onPlaySequenceClick(): void {
         return;
     }
 
-    if (playTickSubscription) {
-        playTickSubscription.dispose();
-        playTickSubscription = undefined;
-    }
-    textColour.set(textColourPlaying);
-    const startTick = effectTick;
-    const seqToTest = cloneSequence(seq);
-    seqToTest.recalculateCumulativeTimes(startTick, resolveSequence);
-    LoadFireworks(seqToTest);
-    ResetCounts();
-    Play(true);
-    playStartRow.set(0);
-    playingRelTick.set(0);
-    const maxTime = seq.items.reduce(
-        (max, e) => Math.max(max, e.cumulativeTimeTillLight), 0
-    );
-    playTickSubscription = context.subscribe("interval.tick", () => {
-        const relTick = effectTick - startTick;
-        playingRelTick.set(relTick);
-        if (relTick > maxTime + 80) {
-            if (playTickSubscription) {
-                playTickSubscription.dispose();
-                playTickSubscription = undefined;
-            }
-            playingRelTick.set(-1);
-            textColour.set(textColourNormal);
-        }
-    });
-}
-
-// ---- Play from index / Stop ----
-
-function onPlayFromIndexClick(): void {
-    const startRow = selectedEntryIndex.get();
     if (startRow === undefined) {
         showError("Invalid selection", "Select a row in the sequence list to play from.");
         return;
     }
-    const seq = getEditSequence()!;
     if (seq.items.length === 0 || startRow >= seq.items.length) {
         showError("Invalid selection", "The selected row is out of range.");
         return;
     }
 
-    // Validate all named references before playing
-    const ctx = buildValidationContext();
-    const issues: ValidationIssue[] = [];
-    if (!seq.isValid(ctx, issues, `Sequence "${seq.name}"`)) {
-        showError("Invalid sequence", formatValidationIssues(issues));
-        return;
-    }
-
     if (playTickSubscription) {
         playTickSubscription.dispose();
         playTickSubscription = undefined;
     }
     textColour.set(textColourPlaying);
+    textColour2.set(textColourPlaying);
     const startTick = effectTick;
     const seqToTest = cloneSequence(seq);
     seqToTest.items = seqToTest.items.slice(startRow);
@@ -560,6 +631,7 @@ function onPlayFromIndexClick(): void {
     const maxTime = seqToTest.items.reduce(
         (max, e) => Math.max(max, e.cumulativeTimeTillLight - startTick), 0
     );
+    beginPaletteTestUntilIdle();
     playTickSubscription = context.subscribe("interval.tick", () => {
         const relTick = effectTick - startTick;
         playingRelTick.set(relTick);
@@ -570,8 +642,13 @@ function onPlayFromIndexClick(): void {
             }
             playingRelTick.set(-1);
             textColour.set(textColourNormal);
+            textColour2.set(textColour2Normal);
         }
     });
+}
+
+function onPlaySequenceClick(): void {
+    onPlayFromIndexClick(0);
 }
 
 function onStopClick(): void {
@@ -582,6 +659,7 @@ function onStopClick(): void {
     Stop();
     playingRelTick.set(-1);
     textColour.set(textColourNormal);
+    textColour2.set(textColour2Normal);
 }
 
 // ---- Item picker windows ----
@@ -600,8 +678,8 @@ function openShellPickerWindow(onSelect: (shell: Shell) => void): void {
     let handle: OpenWindow | undefined;
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
-    const win = window({
-        title: "Select Shell",
+    handle = openPopupWindow("sequence-select-shell", {
+        title: "Select Shell for Sequence",
         width: 300,
         height: 250,
         padding: 8,
@@ -613,7 +691,7 @@ function openShellPickerWindow(onSelect: (shell: Shell) => void): void {
             listview({
                 items: compute(filteredShells, shells => shells.map(s => [s.name, s.GetSpriteString()])),
                 columns: [{ header: "Name", width: "1w" },
-                        { header: "Icons", width: "1w" }
+                { header: "Icons", width: "1w" }
                 ],
                 width: 260,
                 height: 150,
@@ -625,10 +703,9 @@ function openShellPickerWindow(onSelect: (shell: Shell) => void): void {
                     handle?.close();
                 }
             }),
-            button({ text: "Close", width: 70, onClick: () => handle?.close() })
+            colouredButton({ text: "Close", width: 70, height: 22, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: () => handle?.close() })
         ]
-    });
-    handle = win.open();
+    }, SEQUENCE_PICKER_GROUP);
 }
 
 function openGroundEffectPickerWindow(onSelect: (ge: GroundEffect) => void): void {
@@ -645,8 +722,8 @@ function openGroundEffectPickerWindow(onSelect: (ge: GroundEffect) => void): voi
     let handle: OpenWindow | undefined;
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
-    const win = window({
-        title: "Select Ground Effect",
+    handle = openPopupWindow("sequence-select-ground-effect", {
+        title: "Select Ground Effect for Sequence",
         width: 300,
         height: 250,
         padding: 8,
@@ -658,7 +735,7 @@ function openGroundEffectPickerWindow(onSelect: (ge: GroundEffect) => void): voi
             listview({
                 items: compute(filteredEffects, effects => effects.map(ge => [ge.name, ge.GetSpriteString()])),
                 columns: [{ header: "Name", width: "1w" },
-                    { header: "Icons", width: "1w" }
+                { header: "Icons", width: "1w" }
                 ],
                 width: 260,
                 height: 150,
@@ -670,16 +747,16 @@ function openGroundEffectPickerWindow(onSelect: (ge: GroundEffect) => void): voi
                     handle?.close();
                 }
             }),
-            button({ text: "Close", width: 70, onClick: () => handle?.close() })
+            colouredButton({ text: "Close", width: 70, height: 22, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: () => handle?.close() })
         ]
-    });
-    handle = win.open();
+    }, SEQUENCE_PICKER_GROUP);
 }
 
 function openSequencePickerWindow(onSelect: (seqName: string, nextItemAfterEnd: boolean) => void): void {
     const search = store("");
     const nextItemAfterEndIndex = store(1); // 0 = Start of sequence, 1 = End of sequence
     const nextAfterOptions = ["Start of sequence", "End of sequence"];
+    const selectedIndex = store<number | undefined>(undefined);
     const filteredSequences = compute(search, query => {
         const q = query.trim().toLowerCase();
         const currentName = (getEditSequence()?.name ?? "").trim();
@@ -694,10 +771,10 @@ function openSequencePickerWindow(onSelect: (seqName: string, nextItemAfterEnd: 
     let handle: OpenWindow | undefined;
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
-    const win = window({
-        title: "Select Sequence",
+    handle = openPopupWindow("sequence-select-sequence", {
+        title: "Select Sequence For Sequence",
         width: 320,
-        height: 310,
+        height: 270,
         padding: 8,
         position,
         direction: LayoutDirection.Vertical,
@@ -713,11 +790,11 @@ function openSequencePickerWindow(onSelect: (seqName: string, nextItemAfterEnd: 
                 width: 292,
                 height: 150,
                 canSelect: true,
+                selectedCell: compute(selectedIndex, idx => idx === undefined ? null : { row: idx, column: 0 }),
                 onClick: row => {
                     const selected = filteredSequences.get()[row];
                     if (!selected) return;
-                    onSelect(selected.name.trim(), nextItemAfterEndIndex.get() === 1);
-                    handle?.close();
+                    selectedIndex.set(row);
                 }
             }),
             flexible({
@@ -736,14 +813,26 @@ function openSequencePickerWindow(onSelect: (seqName: string, nextItemAfterEnd: 
             }),
             flexible({
                 direction: LayoutDirection.Horizontal,
-                content: [
-                    label({ text: "Click a sequence to add it.", width: "1w" }),
-                    button({ text: "Close", width: 70, onClick: () => handle?.close() })
+                content: [label({ text: "", width: "1w" }),
+                    colouredButton({ text: "Close", width: 70, height: 22, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: () => handle?.close() }),
+                    label({ text: "", width: "1w" }),
+                    colouredButton({
+                        text: "{WHITE}Select", width: 70, height: 22,
+                        colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
+                        disabled: compute(selectedIndex, idx => idx === undefined),
+                        onClick: () => {
+                            const selected = selectedIndex.get();
+                            const seq = selected === undefined ? undefined : filteredSequences.get()[selected];
+                            if (!seq) return;
+                            onSelect(seq.name.trim(), nextItemAfterEndIndex.get() === 1);
+                            handle?.close();
+                        }
+                    }),
+                    label({ text: "", width: "1w" })
                 ]
             })
         ]
-    });
-    handle = win.open();
+    }, SEQUENCE_PICKER_GROUP);
 }
 
 // ---- Launch site helpers ----
@@ -771,6 +860,7 @@ function computeFlattenedDisplayItems(items: SequenceEntry[]): SequenceEntry[] {
             result.push(shot);
         }
     }
+
     result.sort((a, b) => a.cumulativeTimeTillLight - b.cumulativeTimeTillLight);
     return result;
 }
@@ -792,6 +882,7 @@ const addAfterButtonLabel = compute(
 
 // ---- Tab creation ----
 const textColour = store("{PALEGOLD}");
+const textColour2 = store("{WHITE}");
 
 export function createSequenceTab() {
     const savedEdit = getEditSequence();
@@ -840,7 +931,10 @@ export function createSequenceTab() {
                                                             label({ text: compute(textColour, lockOnTime, (c, lock) => `${c}Time${lock ? " [L]" : ""}`), width: 80 }),
                                                             label({ text: "", width: 25 }),
                                                             label({ text: compute(textColour, lockOnTime, (c, lock) => `${c}Delay${!lock ? " [L]" : ""}`), width: 70 }),
-                                                            label({ text: compute(textColour, c => `${c}Index`), width: 35 })
+                                                            label({ text: compute(textColour, c => `${c}Index`), width: 35 }),
+                                                            label({ text: "", width: 100 }),
+                                                            label({ text: compute(textColour, c => `${c}Item`), width: 35 }),
+
                                                         ]
                                                     }),
                                                     // Inputs + item label row
@@ -850,26 +944,50 @@ export function createSequenceTab() {
                                                             textbox({ text: entryEditTimeText, onChange: v => entryEditTimeText.set(v), width: 80, maxLength: 32, disabled: isPlaying }),
                                                             label({ text: "", width: 25 }),
                                                             textbox({ text: entryEditDelayText, onChange: v => entryEditDelayText.set(v), width: 70, maxLength: 32, disabled: isPlaying }),
-                                                            textbox({ text: entryEditIndexText, onChange: v => {
-                                                entryEditIndexText.set(v);
-                                                const parsed = parseInt(v.trim(), 10);
-                                                if (isFinite(parsed) && parsed >= 1) {
-                                                    selectedEntryIndex.set(parsed - 1);
-                                                    selectedExpandedIndex.set(undefined);
-                                                } else {
-                                                    selectedEntryIndex.set(undefined);
-                                                }
-                                            }, width: 35, maxLength: 8, disabled: isPlaying }),
-                                                            label({ text: compute(entryEditItemLabel, textColour, (n, c) => `${c}Item: ${n}`), width: "1w" }),// Picker buttons row
+                                                            textbox({
+                                                                text: entryEditIndexText, onChange: v => {
+                                                                    entryEditIndexText.set(v);
+                                                                    const parsed = parseInt(v.trim(), 10);
+                                                                    if (isFinite(parsed) && parsed >= 1) {
+                                                                        selectedEntryIndex.set(parsed - 1);
+                                                                        selectedExpandedIndex.set(undefined);
+                                                                    } else {
+                                                                        selectedEntryIndex.set(undefined);
+                                                                    }
+                                                                }, width: 35, maxLength: 8, disabled: isPlaying
+                                                            }),
+                                                            label({ text: "", width: 100 }),
+                                                            label({ text: compute(entryEditItemLabel, textColour, (n, c) => `${c}${n}`), width: "1w" }),// Picker buttons row
                                                         ]
                                                     }),
                                                     // Add buttons row
                                                     flexible({
                                                         direction: LayoutDirection.Horizontal,
                                                         content: [
-                                                            button({ text: compute(textColour, c => `${c}Add at`), width: 85, disabled: isPlaying, onClick: onAddAt }),
+                                                            colouredButton({
+                                                                text: compute(textColour, c => `${c}Add at`), width: 85, height: 22,
+                                                                colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple, disabled: isPlaying, onClick: onAddAt
+                                                            }),
                                                             label({ text: compute(textColour, c => `${c}or`), width: 20 }),
-                                                            button({ text: compute(addAfterButtonLabel, textColour, (l, c) => `${c}${l}`), width: 155, disabled: isPlaying, onClick: onAddAfterIndex })
+                                                            colouredButton({
+                                                                text: compute(addAfterButtonLabel, textColour, (l, c) => `${c}${l}`), width: 155, height: 22,
+                                                                colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple, disabled: isPlaying, onClick: onAddAfterIndex
+                                                            }),
+                                                            label({ text: "", width: 52 }),
+                                                            colouredButton({
+                                                                text: compute(textColour, c => `${c}Same as Last`),
+                                                                width: 100, height: 22,
+                                                                colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
+                                                                disabled: compute(isPlaying, hasLastUsedItem, (playing, hasLast) => playing || !hasLast),
+                                                                onClick: () => {
+                                                                    if (!lastUsedItemName || !lastUsedItemType) return;
+                                                                    entryEditItemName = lastUsedItemName;
+                                                                    entryEditItemType = lastUsedItemType;
+                                                                    entryEditNextItemAfterEnd = lastUsedNextItemAfterEnd;
+                                                                    entryEditItemLabel.set(lastUsedItemLabel);
+                                                                }
+                                                            })
+                                                            
                                                         ]
                                                     })
                                                 ],
@@ -878,37 +996,46 @@ export function createSequenceTab() {
                                             flexible({
                                                 direction: LayoutDirection.Vertical,
                                                 content: [
-                                                    button({
+                                                    colouredButton({
                                                         text: compute(textColour, c => `${c}Shell`),
-                                                        width: 60,
+                                                        width: 100, height: 17,
+                                                        colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
                                                         disabled: isPlaying,
                                                         onClick: () => openShellPickerWindow(s => {
+                                                            const name = s.name.trim() || "[Unnamed]";
                                                             entryEditItemName = s.name.trim();
                                                             entryEditItemType = SequenceItemType.Shell;
                                                             entryEditNextItemAfterEnd = true;
-                                                            entryEditItemLabel.set(s.name.trim() || "[Unnamed]");
+                                                            entryEditItemLabel.set(name);
+                                                            setLastUsedItem(entryEditItemName, entryEditItemType, name, entryEditNextItemAfterEnd);
                                                         })
                                                     }),
-                                                    button({
+                                                    colouredButton({
                                                         text: compute(textColour, c => `${c}GroundEffect`),
-                                                        width: 98,
+                                                        width: 100, height: 17,
+                                                        colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
                                                         disabled: isPlaying,
                                                         onClick: () => openGroundEffectPickerWindow(ge => {
+                                                            const name = ge.name.trim() || "[Unnamed]";
                                                             entryEditItemName = ge.name.trim();
                                                             entryEditItemType = SequenceItemType.GroundEffect;
                                                             entryEditNextItemAfterEnd = true;
-                                                            entryEditItemLabel.set(ge.name.trim() || "[Unnamed]");
+                                                            entryEditItemLabel.set(name);
+                                                            setLastUsedItem(entryEditItemName, entryEditItemType, name, entryEditNextItemAfterEnd);
                                                         })
                                                     }),
-                                                    button({
+                                                    colouredButton({
                                                         text: compute(textColour, c => `${c}Sequence`),
-                                                        width: 82,
+                                                        width: 100, height: 17,
+                                                        colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
                                                         disabled: isPlaying,
                                                         onClick: () => openSequencePickerWindow((seqName, nextAfterEnd) => {
+                                                            const name = seqName || "[Unnamed]";
                                                             entryEditItemName = seqName;
                                                             entryEditItemType = SequenceItemType.Sequence;
                                                             entryEditNextItemAfterEnd = nextAfterEnd;
-                                                            entryEditItemLabel.set(seqName || "[Unnamed]");
+                                                            entryEditItemLabel.set(name);
+                                                            setLastUsedItem(entryEditItemName, entryEditItemType, name, entryEditNextItemAfterEnd);
                                                         })
                                                     })
                                                 ]
@@ -931,8 +1058,8 @@ export function createSequenceTab() {
                                                 text: editedSequenceName,
                                                 onChange: v => editedSequenceName.set(v),
                                                 width: 370,
-                                                    maxLength: 64,
-                                                    disabled: isPlaying
+                                                maxLength: 64,
+                                                disabled: isPlaying
                                             }),
                                             // Lock checkboxes: [] Lock []
                                             // Positioned to align with Time (x≈38) and Delay (x≈174) columns
@@ -966,8 +1093,8 @@ export function createSequenceTab() {
                                                             const delayColor = color || (!lockIsTime ? "{TOPAZ}" : "");
                                                             const typeLabel = entry.itemType === SequenceItemType.Sequence ? "Seq."
                                                                 : entry.itemType === SequenceItemType.Shell ? "Shell"
-                                                                : entry.itemType === SequenceItemType.GroundEffect ? "G.E."
-                                                                : "Unknown";
+                                                                    : entry.itemType === SequenceItemType.GroundEffect ? "G.E."
+                                                                        : "Unknown";
                                                             return [
                                                                 isRowPlaying ? ">" : "",
                                                                 `${color}${String(i + 1)}`,
@@ -1022,7 +1149,7 @@ export function createSequenceTab() {
                                                             const color = playing ? "{BABYBLUE}" : "{WHITE}";
                                                             const typeLabel = entry.itemType === SequenceItemType.Shell ? "Shell"
                                                                 : entry.itemType === SequenceItemType.GroundEffect ? "G.E."
-                                                                : "Unknown";
+                                                                    : "Unknown";
                                                             return [
                                                                 playing ? ">" : "",
                                                                 `${color}${String(i + 1)}`,
@@ -1069,17 +1196,19 @@ export function createSequenceTab() {
                                                 direction: LayoutDirection.Horizontal,
                                                 height: 20,
                                                 content: [
-                                                    button({
+                                                    colouredButton({
                                                         text: compute(isDeleteMode, textColour, (d, c) => d ? `${c}Delete Mode: {RED}ON` : `${c}Delete Mode: OFF`),
-                                                        width: 115,
-                                                        isPressed: isDeleteMode,
+                                                        width: 115, height: 22,
+                                                        colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
+                                                        pressed: isDeleteMode,
                                                         disabled: isPlaying,
                                                         onClick: () => isDeleteMode.set(!isDeleteMode.get())
                                                     }),
-                                                    button({
+                                                    colouredButton({
                                                         text: compute(isExpandedView, textColour, (expanded, c) => `${c}${expanded ? "{RED}Compact Sub-Sequences" : "Expand Sub-Sequences"}`),
-                                                        width: 140,
-                                                        isPressed: isExpandedView,
+                                                        width: 140, height: 22,
+                                                        colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
+                                                        pressed: isExpandedView,
                                                         disabled: isPlaying,
                                                         onClick: () => {
                                                             isExpandedView.set(!isExpandedView.get());
@@ -1088,9 +1217,18 @@ export function createSequenceTab() {
                                                         }
                                                     }),
                                                     label({ text: "", width: "1w" }),
-                                                    button({ text: compute(textColour, c => `${c}Play from start`), width: 95, disabled: isPlaying, onClick: onPlaySequenceClick }),
-                                                    button({ text: compute(textColour, c => `${c}Play from index`), width: 95, disabled: isPlaying, onClick: onPlayFromIndexClick }),
-                                                    button({ text: compute(textColour, c => `${c}Stop`), width: 40, onClick: onStopClick })
+                                                    colouredButton({
+                                                        text: compute(textColour2, c => `${c}Play from start`), width: 95, height: 22,
+                                                        colour: Colour.LightOrange, colourDark: Colour.DarkOrange, colourLight: Colour.OrangeLight, disabled: isPlaying, onClick: onPlaySequenceClick
+                                                    }),
+                                                    colouredButton({
+                                                        text: compute(textColour2, c => `${c}Play from index`), width: 95, height: 22,
+                                                        colour: Colour.LightOrange, colourDark: Colour.DarkOrange, colourLight: Colour.OrangeLight, disabled: isPlaying, onClick: onPlayFromIndexClick
+                                                    }),
+                                                    colouredButton({
+                                                        text: "{RED}Stop", width: 40, height: 22,
+                                                        colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: onStopClick
+                                                    })
                                                 ]
                                             }),
                                             // Sequence list actions
@@ -1098,11 +1236,24 @@ export function createSequenceTab() {
                                                 height: 20,
                                                 direction: LayoutDirection.Horizontal,
                                                 content: [
-                                                    button({ text: compute(textColour, c => `${c}Add Sequence`), width: 110, disabled: isPlaying, onClick: addOrUpdateSequence }),
-                                                    button({ text: compute(textColour, c => `${c}New`), width: 50, disabled: isPlaying, onClick: resetSequenceEditor }),
-                                                    button({ text: compute(textColour, c => `${c}Delete Sequence`), width: 110, disabled: isPlaying, onClick: deleteSelectedSequence }),
+                                                    colouredButton({
+                                                        text: compute(textColour2, c => `${c}Add Sequence`), width: 110, height: 22,
+                                                        colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen, disabled: isPlaying, onClick: addOrUpdateSequence
+                                                    }),
+                                                    colouredButton({
+                                                        text: compute(textColour2, c => `${c}New`), width: 50, height: 22,
+                                                        colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue, disabled: isPlaying,
+                                                        onClick: () => confirmDiscardChanges(isSequenceEditorDirty, resetSequenceEditor)
+                                                    }),
+                                                    colouredButton({
+                                                        text: compute(textColour2, c => `${c}Delete Sequence`), width: 110, height: 22,
+                                                        colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed, disabled: isPlaying, onClick: deleteSelectedSequence
+                                                    }),
                                                     label({ text: "", width: "1w" }),
-                                                    button({ text: compute(textColour, c => `${c}Debugger`), width: 70, onClick: openDebuggerWindow })
+                                                    colouredButton({
+                                                        text: "{BLACK}Debugger", width: 70, height: 22,
+                                                        colour: Colour.Yellow, colourDark: Colour.DarkYellow, colourLight: Colour.BrightYellow, onClick: openDebuggerWindow
+                                                    })
                                                 ]
                                             })
                                         ]
@@ -1144,7 +1295,7 @@ export function createSequenceTab() {
                                             const seq = filteredSequences.get()[row];
                                             if (!seq) return;
                                             const fullIndex = definedSequences.get().findIndex(s => s.name === seq.name);
-                                            if (fullIndex >= 0) loadSelectedSequence(fullIndex);
+                                            if (fullIndex >= 0) confirmDiscardChanges(isSequenceEditorDirty, () => loadSelectedSequence(fullIndex));
                                         }
                                     })
                                 ]
