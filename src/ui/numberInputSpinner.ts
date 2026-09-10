@@ -1,4 +1,4 @@
-import { flexible, label, LayoutDirection, read, spinner, store } from "openrct2-flexui";
+import { flexible, label, LayoutDirection, read, spinner, store, twoway } from "openrct2-flexui";
 import type { Bindable } from "openrct2-flexui";
 
 export interface NumberInputSpinnerOptions {
@@ -103,7 +103,7 @@ export function numberInputSpinner(options: NumberInputSpinnerOptions) {
 	};
 
 	const spinnerCreator = spinner({
-		value: valStore,
+		value: twoway(valStore),
 		minimum,
 		maximum,
 		step,

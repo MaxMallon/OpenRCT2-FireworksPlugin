@@ -272,7 +272,7 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 				tilt.get(),
 				azimuth.get(),
 				totalDuration,
-				""
+				effect?.position ?? ""
 			));
 		}
 	});

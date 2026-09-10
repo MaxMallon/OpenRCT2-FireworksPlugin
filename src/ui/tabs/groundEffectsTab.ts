@@ -1,7 +1,7 @@
 import { box, Colour, compute, dropdown, flexible, groupbox, label, LayoutDirection, listview, store, textbox } from "openrct2-flexui";
 import { cloneEffect, cloneGroundEffect } from "../../fireworks/cloneHelpers";
 import { openEffectEditorWindowForEffect, openEffectEditorWindowForType } from "../EffectDefineWindows/registry";
-import { Play, explodeLoad } from "../../fireworks/fireworksEffectsPlayer";
+import { Play, Stop, explodeLoad } from "../../fireworks/fireworksEffectsPlayer";
 import { ResetCounts } from "../../fireworks/particleSpawner";
 import { getGroundEffectList, getGroundEffectMap, getGroundEffectToEdit, setGroundEffectList, setGroundEffectToEdit, launchSites, launchSitesRevision, definedGroundEffects } from "../../fireworks/persistent";
 import { resolveLaunchSitePosition } from "../../fireworks/persistent";
@@ -161,6 +161,10 @@ function onTestGroundEffectButtonClick(): void {
 	const testLoad = new Load(effectsForTest);
 	explodeLoad(testLoad, testPos, { x: 0, y: 0, z: 0 });
 	beginPaletteTest(testLoad.getDuration());
+}
+
+function onStopClick(): void {
+	Stop();
 }
 
 function getFallbackName(): string {
@@ -508,6 +512,10 @@ export function createGroundEffectsTab() {
 														width: 115, height: 22,
 														colour: Colour.LightOrange, colourDark: Colour.DarkOrange, colourLight: Colour.OrangeLight,
 														onClick: onTestGroundEffectButtonClick
+															}),
+															colouredButton({
+																text: "{RED}Stop", width: 40, height: 22,
+																colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: onStopClick
 													})
 												]
 											}),

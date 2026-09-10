@@ -35,7 +35,11 @@ export function cloneEffect(effect: Effect): Effect
 		}
 	}
 
-	clonedEffect.colours = cloneLoadColours(effect.colours);
+	// Some effects store a non-LoadColours sentinel (e.g. 0) in `colours`; only clone real LoadColours instances.
+	if (effect.colours instanceof LoadColours)
+	{
+		clonedEffect.colours = cloneLoadColours(effect.colours);
+	}
 
 	return clonedEffect;
 }
