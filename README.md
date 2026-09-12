@@ -22,16 +22,7 @@ The plugin is currently single-player only. Multiplayer support is not technical
 - Temporarily switch to the default colour palette when an unusual park palette makes the editor difficult to read.
 
 
-<table>
-<tr>
-<td><img src="readme_img/fountains.png" alt="Fountains" width="400"/></td>
-<td><img src="readme_img/combine_effects.png" alt="Combined effects" width="400"/></td>
-</tr>
-<tr>
-<td><img src="readme_img/ground_effects.png" alt="Ground effects" width="400"/></td>
-<td><img src="readme_img/slow_effects.png" alt="Slow effects" width="400"/></td>
-</tr>
-</table>
+![The lights are colourful](readme_img/combined.png "Fireworks!")
 
 
 
@@ -42,7 +33,7 @@ Download the plugin from here: [Fireworks_Plugin.js](/dist/Fireworks_Plugin.js)
 ### Showcase Park
 I made a little park to showcase some of the plugin's capabilities. Use it as inspiration!
 
-Download the showcase park here: [Fireworks_Showcase.park](/dist/Fireworks_Plugin_Showcase.park)
+Download the showcase park here: [Fireworks_Plugin_Showcase.park](/dist/Fireworks_Plugin_Showcase.park)
 
 
 
