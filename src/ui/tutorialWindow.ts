@@ -198,7 +198,7 @@ function createTutorialGroundEffectsTab() {
         "While shells form the spectacle of any given show, ground effects form the\n" +
         "supporting backbone role, like the bassist in band. The ground effects tab is\n" +
         "similar to both shells and loads.\n\n"+
-        " Left is the editor, right is the list. Rmember to name your ground effects.\n\n";
+        " Left is the editor, right is the list. Remember to name your ground effects.\n\n";
     const ge2 =
         "Since ground effects are not fired up, you can add effects directly in a\n" +
         "ground effect and assign a launch site to them. The effects available here\n" +

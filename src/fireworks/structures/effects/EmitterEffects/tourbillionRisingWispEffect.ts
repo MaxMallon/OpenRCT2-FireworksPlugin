@@ -27,7 +27,7 @@ export class TourbillionRisingWispEffect extends EmitterEffect
 		public randomness: number = 80,
 		public particle: CrashedVehicleParticle | null = null,
 		timeLeft: number = TourbillionRisingWispEffect.TOTAL_TICKS,
-		position: CoordsXYZ = { x: 0, y: 0, z: 0 }
+		position: string | CoordsXYZ = { x: 0, y: 0, z: 0 }
 	) {
 		super(EffectType.TourbillionRisingWisp, TourbillionRisingWispEffect.TOTAL_TICKS, timeLeft, 0 as unknown as LoadColours, position);
 	}
@@ -75,7 +75,7 @@ export class TourbillionRisingWispEffect extends EmitterEffect
 			let particle = SpawnLight(
 				posOri, { x: 0, y: 0, z: 0 },
 				this.colour, this.colour,
-				this.duration
+				this.duration, true
 			);
 			if (particle) {
 				this.particle = particle;

@@ -10,6 +10,9 @@ const explanation: ExplanationParagraph[] = [
 	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
 	{ term: "Comets Burst Crackle", description: "Each comet ends in a crackle", height: 14 },
 	{ term: "Comet Head Big", description: "Gives the comets a larger cluster head\ninstead of a single particle", height: 28 },
+	{ term: "Azimuth", description: "Orientation of the effect in the horizontal plane", height: 14 },
+	{ term: "Tilt", description: "Orientation of the effect in the vertical plane", height: 14 },
+	{ term: "Random Angle", description: "Ignores azimuth and tilt, using a random\norientation each time the effect fires", height: 28 },
 	{ term: "Comet Trail Density", description: "Controls the density of the comet trails", height: 14 },
 	{ term: "Comet Trail Width", description: "Controls the width of the comet trails", height: 14 },
 	{ term: "Colour pattern", description: "Determines the sequence and arrangement\nof colours", height: 28 },
@@ -25,6 +28,9 @@ export function openPalmEffectWindow(effect: PalmEffect | undefined, onSave: (ef
 	const extraLongevity = store(effect?.extraLongevity ?? 20);
 	const crackle = store(effect?.crackle ?? false);
 	const bigHead = store(effect?.bigHead ?? true);
+	const azimuth = store(effect?.azimuth ?? 0);
+	const tilt = store(effect?.tilt ?? 0);
+	const randomAngle = store(effect?.randomAngle ?? false);
 	const trailDensity = store(effect?.trailDensity ?? 0.5);
 	const trailWidth = store(effect?.trailWidth ?? 3);
 	const sizePresets = [
@@ -57,13 +63,13 @@ export function openPalmEffectWindow(effect: PalmEffect | undefined, onSave: (ef
 		applyLoadColoursEditor(colours);
 		isReopening = true;
 		handle?.close();
-		openPalmEffectWindow(new PalmEffect(size.get(), physicalSize.get(), extraLongevity.get(), colours.colours, crackle.get(), bigHead.get(), trailDensity.get(), trailWidth.get()), onSave, isEditing, onClose);
+		openPalmEffectWindow(new PalmEffect(size.get(), physicalSize.get(), extraLongevity.get(), colours.colours, crackle.get(), bigHead.get(), trailDensity.get(), trailWidth.get(), azimuth.get(), tilt.get(), randomAngle.get()), onSave, isEditing, onClose);
 	};
 
 	handle = openEffectWindow({
 		title: "Palm Effect",
 		width: 320,
-		height: 550,
+		height: 620,
 		saveText: isEditing ? "Update Effect" : "Add Effect",
 		explanation,
 		onClose: () => {
@@ -93,6 +99,9 @@ export function openPalmEffectWindow(effect: PalmEffect | undefined, onSave: (ef
 				isChecked: bigHead,
 				onChange: value => bigHead.set(value)
 			}),
+			createNumberRow("Azimuth", azimuth, 0, 360),
+			createNumberRow("Tilt", tilt, 0, 360),
+			checkbox({ text: "Random Angle", isChecked: randomAngle, onChange: value => randomAngle.set(value) }),
 			createNumberRow("Comet Trail Density", trailDensity, 0, 1, 0.1),
 			createNumberRow("Comet Trail Width", trailWidth, 0, 5, 0.5),			
 			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
@@ -100,7 +109,7 @@ export function openPalmEffectWindow(effect: PalmEffect | undefined, onSave: (ef
 		],
 		onSave: () => {
 			applyLoadColoursEditor(colours);
-			onSave(new PalmEffect(size.get(), physicalSize.get(), extraLongevity.get(), colours.colours, crackle.get(), bigHead.get(), trailDensity.get(), trailWidth.get()));
+			onSave(new PalmEffect(size.get(), physicalSize.get(), extraLongevity.get(), colours.colours, crackle.get(), bigHead.get(), trailDensity.get(), trailWidth.get(), azimuth.get(), tilt.get(), randomAngle.get()));
 		}
 	});
 }

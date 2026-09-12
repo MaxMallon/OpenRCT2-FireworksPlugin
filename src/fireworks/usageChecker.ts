@@ -1,6 +1,6 @@
 import { ColourSequence } from "./structures/ColourStructures";
 import { cloneEffect, cloneLoad, cloneSequence } from "./cloneHelpers";
-import { getLoadMap, getShellMap, getGroundEffectMap, getSequenceMap, getShotShowMap, resolveSequence, setLoadList, setShellList, setGroundEffectList, setSequenceList, setShotShow, colourSequences, launchSites } from "./persistent";
+import { getLoadMap, getShellMap, getGroundEffectMap, getSequenceMap, getShotShowMap, resolveSequence, setLoadList, setShellList, setGroundEffectList, setSequenceList, setShotShow, colourSequences, launchSites, getEditLoad, setEditLoad, getShellToEdit, setShellToEdit, getGroundEffectToEdit, setGroundEffectToEdit, getEditSequence, setEditSequence, getEditShow, setEditShow } from "./persistent";
 import { EffectType } from "./structures/Effect";
 import { Shell, GroundEffect } from "./structures/Firework";
 import { LaunchSite } from "./structures/LaunchSite";
@@ -68,13 +68,18 @@ export function collectShellOfShellsReferencedLoadNames(loads: Load[]): string[]
 // Usage reference descriptor
 // ---------------------------------------------------------------------------
 
-export type UsageKind = "load" | "shell" | "groundEffect" | "sequence" | "show";
+export type UsageKind = "load" | "shell" | "groundEffect" | "sequence" | "show" | "unsavedEditor";
 
 export interface UsageReference {
 	kind: UsageKind;
 	name: string;
 	/** Extra context, e.g. "ascend load" or "Shell of Shells sub-load". */
 	detail?: string;
+}
+
+/** Build a usage reference for an item currently selected in an unsaved (not-yet-added) editor tab. */
+function unsavedEditorUsage(detail: string): UsageReference {
+	return { kind: "unsavedEditor", name: "Current unsaved editor state", detail };
 }
 
 // ---------------------------------------------------------------------------
@@ -90,6 +95,15 @@ export function findColourSequenceUsages(seqName: string): UsageReference[] {
 		if (load.effects.some(e => (e.colours?.sequenceName ?? "").trim() === trimmed)) {
 			refs.push({ kind: "load", name: load.name });
 		}
+	}
+
+	const editedLoad = getEditLoad();
+	if (editedLoad && editedLoad.effects.some(e => (e.colours?.sequenceName ?? "").trim() === trimmed)) {
+		refs.push(unsavedEditorUsage("Load tab (unsaved load)"));
+	}
+	const editedGroundEffect = getGroundEffectToEdit();
+	if (editedGroundEffect && editedGroundEffect.effects.some(e => (e.colours?.sequenceName ?? "").trim() === trimmed)) {
+		refs.push(unsavedEditorUsage("Ground effect tab (unsaved ground effect)"));
 	}
 	return refs;
 }
@@ -108,6 +122,19 @@ export function findLaunchSiteUsages(siteName: string): UsageReference[] {
 		if (ge.position.trim() === trimmed) {
 			refs.push({ kind: "groundEffect", name: ge.name });
 		}
+	}
+
+	const editedShell = getShellToEdit();
+	if (editedShell && typeof editedShell.position === "string" && editedShell.position.trim() === trimmed) {
+		refs.push(unsavedEditorUsage("Shell tab (unsaved shell)"));
+	}
+	const editedGroundEffect = getGroundEffectToEdit();
+	if (editedGroundEffect && editedGroundEffect.position.trim() === trimmed) {
+		refs.push(unsavedEditorUsage("Ground effect tab (unsaved ground effect)"));
+	}
+	const editedShow = getEditShow();
+	if (editedShow && (editedShow.launchTerrain ?? "").trim() === trimmed) {
+		refs.push(unsavedEditorUsage("Show tab (unsaved show)"));
 	}
 	return refs;
 }
@@ -139,6 +166,23 @@ export function findLoadUsages(loadName: string): UsageReference[] {
 			}
 		}
 	}
+
+	const editedShell = getShellToEdit();
+	if (editedShell && (editedShell.load.loadName.trim() === trimmed || editedShell.ascendEffects.some(e => e.loadName.trim() === trimmed))) {
+		refs.push(unsavedEditorUsage("Shell tab (unsaved shell)"));
+	}
+	const editedLoad = getEditLoad();
+	if (editedLoad) {
+		for (const effect of editedLoad.effects) {
+			if (effect.type === EffectType.ShellOfShells) {
+				const subLoads: ShellLoad[] = (effect as unknown as { subLoads?: ShellLoad[] }).subLoads ?? [];
+				if (subLoads.some(sl => sl.loadName.trim() === trimmed)) {
+					refs.push(unsavedEditorUsage("Load tab (unsaved load, Shell of Shells sub-load)"));
+					break;
+				}
+			}
+		}
+	}
 	return refs;
 }
 
@@ -152,6 +196,11 @@ export function findShellUsages(shellName: string): UsageReference[] {
 			refs.push({ kind: "sequence", name: seq.name });
 		}
 	}
+
+	const editedSequence = getEditSequence();
+	if (editedSequence && editedSequence.items.some(e => e.itemType === SequenceItemType.Shell && e.itemName.trim() === trimmed)) {
+		refs.push(unsavedEditorUsage("Sequence tab (unsaved sequence)"));
+	}
 	return refs;
 }
 
@@ -164,6 +213,11 @@ export function findGroundEffectUsages(geName: string): UsageReference[] {
 		if (seq.items.some(e => e.itemType === SequenceItemType.GroundEffect && e.itemName.trim() === trimmed)) {
 			refs.push({ kind: "sequence", name: seq.name });
 		}
+	}
+
+	const editedSequence = getEditSequence();
+	if (editedSequence && editedSequence.items.some(e => e.itemType === SequenceItemType.GroundEffect && e.itemName.trim() === trimmed)) {
+		refs.push(unsavedEditorUsage("Sequence tab (unsaved sequence)"));
 	}
 	return refs;
 }
@@ -182,6 +236,15 @@ export function findSequenceUsages(seqName: string): UsageReference[] {
 		if (show.sequence.trim() === trimmed) {
 			refs.push({ kind: "show", name: show.name });
 		}
+	}
+
+	const editedSequence = getEditSequence();
+	if (editedSequence && editedSequence.items.some(e => e.itemType === SequenceItemType.Sequence && e.itemName.trim() === trimmed)) {
+		refs.push(unsavedEditorUsage("Sequence tab (unsaved sequence)"));
+	}
+	const editedShow = getEditShow();
+	if (editedShow && editedShow.sequence.trim() === trimmed) {
+		refs.push(unsavedEditorUsage("Show tab (unsaved show)"));
 	}
 	return refs;
 }
@@ -243,6 +306,22 @@ export function removeColourSequenceUsages(seqName: string): void {
 		return new GroundEffect(kept.map(cloneEffect), ge.name, ge.position);
 	});
 	setGroundEffectList(updatedGes);
+
+	// Strip matching effects from the currently unsaved editor state
+	const editedLoad = getEditLoad();
+	if (editedLoad) {
+		const kept = editedLoad.effects.filter(e => (e.colours?.sequenceName ?? "").trim() !== trimmed);
+		if (kept.length !== editedLoad.effects.length) {
+			setEditLoad(new Load(kept.map(cloneEffect), editedLoad.name));
+		}
+	}
+	const editedGroundEffect = getGroundEffectToEdit();
+	if (editedGroundEffect) {
+		const kept = editedGroundEffect.effects.filter(e => (e.colours?.sequenceName ?? "").trim() !== trimmed);
+		if (kept.length !== editedGroundEffect.effects.length) {
+			setGroundEffectToEdit(new GroundEffect(kept.map(cloneEffect), editedGroundEffect.name, editedGroundEffect.position));
+		}
+	}
 }
 
 /**
@@ -275,6 +354,25 @@ export function removeLaunchSiteUsages(siteName: string): void {
 	}
 	if (geNames.length > 0) {
 		setGroundEffectList([...getGroundEffectMap().values()].filter(ge => geNames.indexOf(ge.name) < 0));
+	}
+
+	// Clear the launch site from the currently unsaved editor state
+	const editedShell = getShellToEdit();
+	if (editedShell && typeof editedShell.position === "string" && editedShell.position.trim() === trimmed) {
+		editedShell.position = "";
+		setShellToEdit(editedShell);
+	}
+	const editedGroundEffect = getGroundEffectToEdit();
+	if (editedGroundEffect && editedGroundEffect.position.trim() === trimmed) {
+		setGroundEffectToEdit(new GroundEffect(editedGroundEffect.effects, editedGroundEffect.name, ""));
+	}
+	const editedShow = getEditShow();
+	if (editedShow && (editedShow.launchTerrain ?? "").trim() === trimmed) {
+		setEditShow(new Show(
+			editedShow.name, editedShow.sequence, editedShow.interruptWhenTooManyParticles,
+			editedShow.anouncement1, editedShow.anouncement2,
+			editedShow.trigger, editedShow.music, editedShow.musicRideID, undefined, editedShow.enabled
+		));
 	}
 }
 
@@ -345,6 +443,39 @@ export function removeLoadUsages(loadName: string): void {
 		return changed ? new GroundEffect(newEffects, ge.name, ge.position) : ge;
 	});
 	if (geChanged) setGroundEffectList(updatedGes);
+
+	// Clear this load reference from the currently unsaved editor state
+	const editedShell = getShellToEdit();
+	if (editedShell) {
+		let shellChanged = false;
+		if (editedShell.load.loadName.trim() === trimmed) {
+			editedShell.load = new ShellLoad("", editedShell.load.timeTillExplode);
+			shellChanged = true;
+		}
+		if (editedShell.ascendEffects.some(e => e.loadName.trim() === trimmed)) {
+			editedShell.ascendEffects = editedShell.ascendEffects.filter(e => e.loadName.trim() !== trimmed);
+			shellChanged = true;
+		}
+		if (shellChanged) setShellToEdit(editedShell);
+	}
+	const editedLoad = getEditLoad();
+	if (editedLoad) {
+		let loadEditChanged = false;
+		const newEffects = editedLoad.effects.map(effect => {
+			if (effect.type === EffectType.ShellOfShells) {
+				const bb = effect as unknown as { subLoads?: ShellLoad[] };
+				if (bb.subLoads && bb.subLoads.some(sl => sl.loadName.trim() === trimmed)) {
+					const clonedEffect = cloneEffect(effect);
+					(clonedEffect as unknown as { subLoads: ShellLoad[] }).subLoads =
+						(bb.subLoads ?? []).filter(sl => sl.loadName.trim() !== trimmed);
+					loadEditChanged = true;
+					return clonedEffect;
+				}
+			}
+			return effect;
+		});
+		if (loadEditChanged) setEditLoad(new Load(newEffects, editedLoad.name));
+	}
 }
 
 /**
@@ -376,6 +507,24 @@ export function removeItemFromSequences(itemName: string, itemType: SequenceItem
 	}
 
 	setSequenceList(updatedSeqs);
+
+	// Also strip matching entries from the currently unsaved editor sequence
+	const editedSequence = getEditSequence();
+	if (editedSequence) {
+		const indices: number[] = [];
+		for (let i = 0; i < editedSequence.items.length; i++) {
+			const e = editedSequence.items[i];
+			if (e.itemType === itemType && e.itemName.trim() === trimmed) {
+				indices.push(i);
+			}
+		}
+		if (indices.length > 0) {
+			const cloned = cloneSequence(editedSequence);
+			cloned.recalculateCumulativeTimes(0, resolveSequence);
+			removeLockOnTimeItemsFromSequence(cloned, indices);
+			setEditSequence(cloned);
+		}
+	}
 }
 
 /**
@@ -394,6 +543,30 @@ export function removeSequenceFromShows(seqName: string): void {
 		return show;
 	});
 	setShotShow(updated);
+
+	// Also clear the sequence from the currently unsaved editor state
+	const editedSequence = getEditSequence();
+	if (editedSequence && editedSequence.items.some(e => e.itemType === SequenceItemType.Sequence && e.itemName.trim() === trimmed)) {
+		const indices: number[] = [];
+		for (let i = 0; i < editedSequence.items.length; i++) {
+			const e = editedSequence.items[i];
+			if (e.itemType === SequenceItemType.Sequence && e.itemName.trim() === trimmed) {
+				indices.push(i);
+			}
+		}
+		const cloned = cloneSequence(editedSequence);
+		cloned.recalculateCumulativeTimes(0, resolveSequence);
+		removeLockOnTimeItemsFromSequence(cloned, indices);
+		setEditSequence(cloned);
+	}
+	const editedShow = getEditShow();
+	if (editedShow && editedShow.sequence.trim() === trimmed) {
+		setEditShow(new Show(
+			editedShow.name, "", editedShow.interruptWhenTooManyParticles,
+			editedShow.anouncement1, editedShow.anouncement2,
+			editedShow.trigger, editedShow.music, editedShow.musicRideID, editedShow.launchTerrain, editedShow.enabled
+		));
+	}
 }
 
 // ---------------------------------------------------------------------------

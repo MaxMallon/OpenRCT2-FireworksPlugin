@@ -247,8 +247,25 @@ export function isGroundEffectEditorDirty(): boolean {
 		return true;
 	}
 
-	const currentData = currentEffects.map((e: Effect) => e.toParkData());
-	const savedData = saved.effects.map((e: Effect) => e.toParkData());
+	const comparableData = (effect: Effect): any => {
+		const data = effect.toParkData();
+		if (data.className === "TourbillionRisingWispEffect") {
+			delete data.posX;
+			delete data.posY;
+			delete data.posZ;
+			delete data.velX;
+			delete data.velY;
+			delete data.velZ;
+			delete data.randomSpeed;
+			delete data.driftAngle;
+			delete data.driftStrength;
+			delete data.particle;
+			delete data.particleId;
+		}
+		return data;
+	};
+	const currentData = currentEffects.map(comparableData);
+	const savedData = saved.effects.map(comparableData);
 	return JSON.stringify(currentData) !== JSON.stringify(savedData);
 }
 

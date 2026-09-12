@@ -35,7 +35,7 @@ export function openShellOfShellsLoadSelectionWindow(loads: Load[], selectedLoad
 	const mainPos = getMainWindowPosition();
 	const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
 
-	openPopupCustom(EFFECT_SUB_WINDOW_GROUP, () =>
+	openPopupCustom(EFFECT_SUB_WINDOW_GROUP, onClose =>
 	{
 		const template = window({
 		title: "Select Custom Load",
@@ -43,6 +43,7 @@ export function openShellOfShellsLoadSelectionWindow(loads: Load[], selectedLoad
 		height: 260,
 		padding: 8,
 		position,
+		onClose,
 		direction: LayoutDirection.Vertical,
 		content: [
 			label({ text: "Search by prefix" }),

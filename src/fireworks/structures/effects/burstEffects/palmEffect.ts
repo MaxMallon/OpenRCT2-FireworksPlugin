@@ -1,5 +1,5 @@
 import { LoadColours, ShellColours } from "../../ColourStructures";
-import { counterGravity1sec, tilePerSecond, zScaleOffset } from "../../../helpers";
+import { counterGravity1sec, DegreeToRad, tilePerSecond, zScaleOffset } from "../../../helpers";
 import { BurstEffect, EffectType } from "../../Effect";
 import { Shell, ShotHeadType } from "../../Firework";
 import { Load } from "../../Load";
@@ -12,12 +12,12 @@ import { GetColouredEffectSprite, sprite } from "../../../../img/images";
 export class PalmEffect extends BurstEffect {
 	override readonly className: string = "PalmEffect";
 
-	constructor(size: number, physicalSize: number, extraLongevity: number, colours: LoadColours, public crackle: boolean, public bigHead: boolean = true, public trailDensity: number = 0.5, public trailWidth: number = 3) {
+	constructor(size: number, physicalSize: number, extraLongevity: number, colours: LoadColours, public crackle: boolean, public bigHead: boolean = true, public trailDensity: number = 0.5, public trailWidth: number = 3, public azimuth: number = 0, public tilt: number = 0, public randomAngle: boolean = false) {
 		super(EffectType.Palm, size, physicalSize, extraLongevity, colours);
 	}
 
 	static fromParkData(effect: any): PalmEffect {
-		return new PalmEffect(effect?.size ?? 0, effect?.physicalSize ?? 0, effect?.extraLongevity ?? 0, LoadColours.fromParkData(effect?.colours), effect?.crackle ?? false, effect?.bigHead ?? true, effect?.trailDensity ?? 0.5, effect?.trailWidth ?? 3);
+		return new PalmEffect(effect?.size ?? 0, effect?.physicalSize ?? 0, effect?.extraLongevity ?? 0, LoadColours.fromParkData(effect?.colours), effect?.crackle ?? false, effect?.bigHead ?? true, effect?.trailDensity ?? 0.5, effect?.trailWidth ?? 3, effect?.azimuth ?? 0, effect?.tilt ?? 0, effect?.randomAngle ?? false);
 	}
 
 	override getDuration(): number {
@@ -31,6 +31,15 @@ export class PalmEffect extends BurstEffect {
 		let maxCircumference = this.size * Math.PI * 2;
 		const radiusRatio = this.physicalSize / this.size;
 		let rows = maxCircumference / 2 / distance;
+
+		if (this.randomAngle) {
+			this.azimuth = Math.random() * 360;
+			this.tilt = Math.random() * 360;
+		}
+		// azimuth/tilt are stored in degrees (matching the UI), convert once up front
+		const azimuthRad = DegreeToRad(this.azimuth);
+		const tiltRad = DegreeToRad(this.tilt);
+
 		for (let i = 0; i < rows; i++) {
 			let angle = (Math.PI / rows) * i;
 			let radius = this.size * Math.sin(angle);
@@ -50,6 +59,14 @@ export class PalmEffect extends BurstEffect {
 					x *= 1.4;
 				if (y > 0)
 					y *= 1.4
+				// tilt around the X axis, then rotate around the vertical (Z) axis, so azimuth only changes the tilt direction
+				const yTilted = y * Math.cos(tiltRad) - z * Math.sin(tiltRad);
+				const zTilted = y * Math.sin(tiltRad) + z * Math.cos(tiltRad);
+				const xRotated = x * Math.cos(azimuthRad) - yTilted * Math.sin(azimuthRad);
+				const yRotated = x * Math.sin(azimuthRad) + yTilted * Math.cos(azimuthRad);
+				x = xRotated;
+				y = yRotated;
+				z = zTilted;
 				let lineColours = new ShellColours();
 
 				let load: ShellLoad = new ShellLoad("", ShellLoad.explodeAtEnd, undefined, new Load([]));
@@ -140,7 +157,7 @@ export class SprayBurstEffect extends PalmEffect {
 	override readonly className: string = "SprayBurstEffect";
 
 	constructor(size: number, physicalSize: number, extraLongevity: number, colours: LoadColours) {
-		super(size, physicalSize, extraLongevity, colours, false, false, 0, 0);
+		super(size, physicalSize, extraLongevity, colours, false, false, 0, 0, 0, 0, false);
 		this.type = EffectType.SprayBurst;
 	}
 

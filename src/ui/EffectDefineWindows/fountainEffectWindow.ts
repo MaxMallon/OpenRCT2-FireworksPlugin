@@ -21,6 +21,7 @@ const fountainExplanation: ExplanationParagraph[] = [
 	{ term: "Azimuth", description: "The angle in the horizontal plane of where\nthe particles are sprayed towards.", height: 28 },
 	{ term: "Add", description: "Opens the window to add a new phase at\nthe end.", height: 28 },
 	{ term: "Edit", description: "Opens the window to edit the selected phase.", height: 14 },
+	{ term: "Clone", description: "Duplicates the selected phase and inserts\nit right after.", height: 28 },
 	{ term: "Delete", description: "Deletes the selected phase.", height: 14 },
 	{ term: "^", description: "Moves the selected phase 1 postion up.", height: 14 },
 	{ term: "v", description: "Moves the selected phase 1 postion up.", height: 14 },
@@ -175,6 +176,27 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 		selectedPhaseIndex.set(undefined);
 	};
 
+	const cloneSelectedPhase = (): void => {
+		const idx = selectedPhaseIndex.get();
+		if (typeof idx !== "number") return;
+		const phase = phases.get()[idx];
+		if (!phase) return;
+		const next = [...phases.get()];
+		next.splice(idx + 1, 0, new FountainEffectPhase(
+			phase.density,
+			phase.maxHeight,
+			phase.colour1,
+			phase.colour2,
+			phase.colour3,
+			phase.crackleColour,
+			phase.crackle,
+			phase.angularSize,
+			phase.duration
+		));
+		phases.set(next);
+		selectedPhaseIndex.set(idx + 1);
+	};
+
 	const movePhaseUp = (): void => {
 		const idx = selectedPhaseIndex.get();
 		if (typeof idx !== "number" || idx === 0) return;
@@ -257,6 +279,7 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 						content: [
 							colouredButton({ text: "{WHITE}Add", width: 65, height: 28, colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen, onClick: addPhase }),
 							colouredButton({ text: "Edit", width: 65, height: 28, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: editSelectedPhase }),
+							colouredButton({ text: "Clone", width: 65, height: 28, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: cloneSelectedPhase }),
 							colouredButton({ text: "{WHITE}Delete", width: 65, height: 28, colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed, onClick: removeSelectedPhase }),
 							button({ image: "arrow_up", width: 28, height: 28, onClick: movePhaseUp }),
 							button({ image: "arrow_down", width: 28, height: 28, onClick: movePhaseDown })
@@ -271,8 +294,9 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 				phases.get(),
 				tilt.get(),
 				azimuth.get(),
-				totalDuration,
-				effect?.position ?? ""
+				effect?.timeLeft ?? totalDuration,
+				effect?.position ?? "",
+				effect?.currentPhaseIndex ?? -1
 			));
 		}
 	});

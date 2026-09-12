@@ -77,7 +77,7 @@ export class FlyingFishEffect extends BurstEffect {
 			let firstInCluster = true;
 			for (const offset of clusterOffsets) {
 				const spawnPos = { x: posOri.x + offset.x, y: posOri.y + offset.y, z: posOri.z + offset.z };
-				const particle = SpawnLight(spawnPos, vel, colour, colour, longevity, 0);
+				const particle = SpawnLight(spawnPos, vel, colour, colour, longevity, true, 0);
 				if (particle) {
 					particle.colours = { body: Colour.Invisible, trim: Colour.Invisible };
 					if (firstInCluster) {

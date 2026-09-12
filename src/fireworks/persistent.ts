@@ -6,7 +6,7 @@ import { Effect, EmitterEffect } from "./structures/Effect";
 import { Shell, GroundEffect } from "./structures/Firework";
 import { LaunchSite } from "./structures/LaunchSite";
 import { Load } from "./structures/Load";
-import { Sequence } from "./structures/Sequence";
+import { Sequence, SequenceEntry } from "./structures/Sequence";
 import { ShellLoad } from "./structures/ShellLoad";
 import { Show } from "./structures/Show";
 import { pluginVersion, downloadURL } from "../pluginInfo";
@@ -448,7 +448,19 @@ export function setShotShow(value: Show[]): void {
 export function resolveLoad(name: string): Load | undefined { return loadMap.get(name.trim()); }
 export function resolveShell(name: string): Shell | undefined { return shellMap.get(name.trim()); }
 export function resolveGroundEffect(name: string): GroundEffect | undefined { return groundEffectMap.get(name.trim()); }
-export function resolveSequence(name: string): Sequence | undefined { return sequenceMap.get(name.trim()); }
+export function resolveSequence(name: string, visited: Set<string> = new Set<string>()): Sequence | undefined {
+	const trimmed = name.trim();
+	if (visited.has(trimmed)) return undefined;
+	const seq = sequenceMap.get(trimmed);
+	if (!seq) return undefined;
+
+	visited.add(trimmed);
+	const clone = new Sequence(seq.name, seq.items.map(e => new SequenceEntry(
+		e.itemName, e.itemType, e.timeTillLight, e.cumulativeTimeTillLight, e.nextItemAfterEnd
+	)));
+	clone.recalculateCumulativeTimes(0, n => resolveSequence(n, new Set(visited)));
+	return clone;
+}
 
 // Individual item accessors
 export function getEditLoad(): Load | undefined { return editLoad; }

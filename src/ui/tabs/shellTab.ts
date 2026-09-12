@@ -20,6 +20,7 @@ import { colouredButton } from "../ColouredButton";
 import { beginPaletteTest } from "../../fireworks/testPaletteMode";
 import { decodeEffect, SerializedShellEditorState } from "../../fireworks/parkStorage";
 import { confirmDiscardChanges } from "../discardChangesWindow";
+import { applySortOrder, createSortOrderStore, sortToggleButton } from "../sortToggleButton";
 
 const DEFAULT_SHELL_EDITOR = {
     name: "",
@@ -297,6 +298,7 @@ function applyShellToEditor(shell: Shell): void {
     timeTillStall.set(shell.timeTillStall);
     delay.set(shell.delay);
     randomness.set(shell.randomness);
+    syncHeightAndDelay.set(shell.timeTillStall === shell.delay);
     ascendEffectsStore.set(shell.ascendEffects.map(e => new ShellLoad(e.loadName, e.timeTillExplode)));
     ascendEffectsRevision.set(ascendEffectsRevision.get() + 1);
     selectedAscendEffectIndex.set(undefined);
@@ -469,13 +471,15 @@ function openAddAscendEffectWindow(): void {
     const minDelay = prevEffects.length > 0 ? prevEffects[prevEffects.length - 1].timeTillExplode : 0;
     const ascendDelay = store(Math.max(10, minDelay));
     const search = store("");
+    const newestFirst = createSortOrderStore();
 
-    const filteredLoads = compute(search, query => {
+    const filteredLoads = compute(search, newestFirst, (query, reversed) => {
         const norm = query.trim().toLowerCase();
-        return getLoadList().filter(load => {
+        const filtered = getLoadList().filter(load => {
             const n = load.name.trim();
             return n && (!norm || n.toLowerCase().indexOf(norm) === 0);
         });
+        return applySortOrder(filtered, reversed);
     });
 
     let handle: OpenWindow | undefined;
@@ -490,11 +494,17 @@ function openAddAscendEffectWindow(): void {
         direction: LayoutDirection.Vertical,
         content: [
             label({ text: "Search by prefix" }),
-            textbox({
-                text: search,
-                onChange: value => search.set(value),
-                width: 260,
-                maxLength: 64
+            flexible({
+                direction: LayoutDirection.Horizontal,
+                content: [
+                    textbox({
+                        text: search,
+                        onChange: value => search.set(value),
+                        width: 160,
+                        maxLength: 64
+                    }),
+                    sortToggleButton(newestFirst)
+                ]
             }),
             listview({
                 items: compute(filteredLoads, loads => loads.map(load => [load.name, load.GetSpriteString()])),
@@ -562,9 +572,10 @@ function openAddAscendEffectWindow(): void {
 
 function openShellLoadSelectionWindow(onSelect: (load: Load) => void): void {
     const search = store("");
-    const filteredLoads = compute(search, query => {
+    const newestFirst = createSortOrderStore();
+    const filteredLoads = compute(search, newestFirst, (query, reversed) => {
         const normalizedQuery = query.trim().toLowerCase();
-        return getLoadList().filter(load => {
+        const filtered = getLoadList().filter(load => {
             const name = load.name.trim();
             if (!name) {
                 return false;
@@ -576,6 +587,7 @@ function openShellLoadSelectionWindow(onSelect: (load: Load) => void): void {
 
             return name.toLowerCase().indexOf(normalizedQuery) === 0;
         });
+        return applySortOrder(filtered, reversed);
     });
 
     let handle: OpenWindow | undefined;
@@ -590,11 +602,17 @@ function openShellLoadSelectionWindow(onSelect: (load: Load) => void): void {
         direction: LayoutDirection.Vertical,
         content: [
             label({ text: "Search by prefix" }),
-            textbox({
-                text: search,
-                onChange: value => search.set(value),
-                width: 260,
-                maxLength: 64
+            flexible({
+                direction: LayoutDirection.Horizontal,
+                content: [
+                    textbox({
+                        text: search,
+                        onChange: value => search.set(value),
+                        width: 160,
+                        maxLength: 64
+                    }),
+                    sortToggleButton(newestFirst)
+                ]
             }),
             listview({
                 items: compute(filteredLoads, loads => loads.map(load => [load.name, load.GetSpriteString()])),

@@ -1,6 +1,8 @@
 # OpenRCT2 Fireworks Plugin
-
 A plugin for OpenRCT2 that allows you create and run your own firework shows, and easily share them with others.
+
+![Nice banner with fireworks](readme_img/banner.png "Banner")
+
 
 The plugin provides an editor for creating your own fireworks and combining them into fully timed and schedulable shows which can even be synced up with a ride's music. Your fireworks data is saved in the park, including shows that are currently playing, so parks can be shared with other players who have the plugin installed. A park with fireworks actively playing during saving will have a news message inserted to inform possible future players opening the file without the plugin that this park includes fireworks, and where to get the plugin.
 
@@ -18,6 +20,17 @@ The plugin is currently single-player only. Multiplayer support is not technical
 - Export and import fireworks data for reuse in other parks.
 - Use the built-in tutorial and debugger while designing shows.
 - Temporarily switch to the default colour palette when an unusual park palette makes the editor difficult to read.
+
+## Download
+### Plugin
+Download the plugin from here: [Fireworks_Plugin.js](/dist/Fireworks_Plugin.js)
+
+### Showcase Park
+I made a little park to showcase some of the plugin's capabilities. Use it as inspiration!
+
+Download the showcase park here: [Fireworks_Showcase.park](/dist/Fireworks_Plugin_Showcase.park)
+
+
 
 ## Installation
 
@@ -37,6 +50,9 @@ In **edit mode**, the Fireworks Editor is available. This is where you create la
 
 In **play mode**, the editor is replaced by the show-playing window. This window is intended for parks that already have a fireworks programme configured: it shows which shows are active and when scheduled shows will run, and provides the button to stop the programme.
 
+
+![The rct player uses the fireworks player](readme_img/win_playing.png "Playing Mode")
+
 This distinction matters when opening somebody else's park. If the park was saved while a fireworks show programme was active, it will open in play mode and you will not see the editor. Stop the show programme from the show-playing window first; once the programme has stopped, the editor will be available again. Parks can still be opened safely by players who do not have the plugin, but the fireworks will not run for them.
 
 When creating a show from scratch, work through the editor from left to right. The tabs follow the order in which you will usually build a show: define where fireworks launch, create the effects, combine them into shells and ground effects, arrange those items in sequences, and finally schedule the sequences as shows.
@@ -49,6 +65,9 @@ Use **Pick On Map** to choose a location or attach the site to an entity such as
 
 When a site follows an entity, its coordinates can be relative to that entity, such as a position 20 units above it. Use the unfollow control to detach a site if you selected the wrong entity or no longer want it to move with one.
 
+
+![Ooh a crosshair preview!](readme_img/tab_launch.png "Launch sites")
+
 ### Loads
 
 A load is a collection of effects that are fired together inside a shell. Loads are usually the main building blocks of the spectacle: each effect contributes its own shape, size, and colour settings, and several effects can be combined to make a more complex burst.
@@ -56,6 +75,8 @@ A load is a collection of effects that are fired together inside a shell. Loads 
 Add effects with the effect selector, then configure them in the effect window that opens. The `?` button in an effect window explains the settings for that effect. Give loads descriptive names, use **Test Load** to preview them, and remove unwanted effects with delete mode.
 
 Keep an eye on the particle budget while building loads. Large loads with many effects can reach OpenRCT2's particle limit quickly; the debugger is available while testing to help you measure this.
+
+![Get a load of this](readme_img/tab_load.png "Loads")
 
 ### Shells
 
@@ -71,21 +92,28 @@ Shell settings include:
 
 Tilt is the angle away from straight up, while azimuth controls the direction around the map. Height controls how long the shell takes to reach its highest point, and delay controls how long it waits before triggering the main load. These values are normally kept synchronized, but they can be separated when a particular effect needs different launch and burst timing. The preset launch buttons provide a quick starting point and do not change the shell's loads.
 
+![Woah so many settings](readme_img/tab_shell.png "Shells")
+
 ### Ground Effects
 
 Ground effects are fired directly from a launch site rather than into the sky. They are useful for supporting a show with effects at ground level, and are configured in much the same way as loads and shells: create a named item, add effects, test it, and remove unwanted effects when needed.
 
 The available ground effects differ from the effects used in loads because they are designed for ground-level use. Some emit continuously for a period of time instead of ending after one burst.
 
+
+![This plugin is grounded in reality](readme_img/tab_groundeffect.png "Ground Effects")
+
 ### Sequences
 
-A sequence is a timed list of shells and ground effects. Start by adding an item, then add later items either at an absolute time or after another item with a specified delay. Time values accept combinations such as `2m30s20t`, where `t` is a game tick. For example, `60t` is roughly 1.5 seconds and `1m` is one minute.
+A sequence is a timed list of shells and ground effects. Start by adding an item, then add later items either at an absolute time or after another item with a specified delay. Time values accept combinations such as `2m30s20t`, where `t` is a game tick. For example, `60t` equels 1.5 seconds and `1m` is one minute.
 
 Sequences can contain other sequences, which makes it possible to build and reuse sections of a show. A sequence cannot contain itself. When adding an item, the index controls which existing item it follows; leaving the index empty adds it after the last item.
 
 The time and delay locks control how existing items move when something is inserted. Locking **Delay** preserves the delay after an item and shifts later items forward when necessary. Locking **Time** preserves the absolute time and updates the affected delay instead. This makes it possible either to insert an item and move the rest of a section, or to insert one into an existing time slot without shifting the rest of the show.
 
 Because a sequence has a duration, an item added after a nested sequence can be placed after the start or after the end of that nested sequence. Use the expanded view to inspect the complete sequence tree when needed, although editing is usually clearer in the collapsed view.
+
+![You should make a fibonici firework sequence](readme_img/tab_sequence.png "Sequences")
 
 ### Shows
 
@@ -95,6 +123,8 @@ Shows can also be synchronized with a ride's music. Select an operating ride and
 
 Enable the shows you want to run in the list, then start the show programme. The show-playing window displays the active schedule and provides the button to stop the programme and return to the editor.
 
+![It's showtime, baby!](readme_img/tab_show.png "Shows")
+
 ### Configuration
 
 The configuration tab contains tools and settings that apply to the editor as a whole. It is also where you can create and manage colour sequences. A colour sequence is an ordered list of colours that can be reused by effects that support them, such as spray bursts. The plugin includes several colour sequences by default, but you can create your own, rename them, change the colours from left to right, adjust the number of colours, or remove sequences you no longer need.
@@ -103,6 +133,8 @@ The configuration tab contains tools and settings that apply to the editor as a 
 Use the import and export controls to move your fireworks data between parks. This is useful for reusing effects, loads, shells, sequences, shows, and colour sequences. Launch sites are tied to the map and do not transfer meaningfully between parks, so imported launch sites may appear underground or in the air and should be repositioned.
 
 The configuration tab also has the **Tutorial** button. It opens the in-game tutorial again whenever you need a reminder about a tab or workflow, even after the tutorial's automatic first opening.
+
+![Why is it called config when the tab says settings?](readme_img/tab_config.png "Configuration")
 
 ## Debugger and Particle Limits
 
@@ -117,6 +149,9 @@ For the best results, keep loads reasonably small and account for other particle
 Some custom park palettes make the editor difficult or impossible to read. The plugin can temporarily switch the park to the default palette while the editor is open, while remembering the park's original palette.
 
 Palette mode can be controlled manually from the configuration tab. In automatic mode, the default palette is enabled when the editor opens and restored when you test a firework or close the editor.
+
+
+![Ofc it's matrix colours, why even ask](readme_img/win_debugger.png "Debugger")
 
 ## FAQ
 
@@ -136,6 +171,14 @@ The editor window may be blocking the view. Move it and test again.
 
 Set the sequence lock to **Delay**, add a new item with a large delay immediately before the section you want to move, then set the lock back to **Time** and delete the temporary item. The rest of the sequence remains shifted forward. To undo the change, reverse those steps.
 
+### How can I easily copy an item to adjust the copy?
+
+Simply click on the item you want to copy to load it into the editor, adjust the name and click **Add [item]**, it will add the copy with the new name. 
+
+### How come some of the fireworks look a little crooked?
+
+The crashed vehicle particles were never meant for fireworks and use wonky integer math from the 90s. That causes them to not behave symetrically. This was not noticable with a few particles scattering about as a coaster train crashes, but becomes easily apparent when you have a perfectly symetrical sphere of them.
+
 
 ## (Sort of) Planned Features
 
@@ -145,11 +188,14 @@ Set the sequence lock to **Delay**, add a new item with a large delay immediatel
 - More suitable particles.
 - Maybe one day multiplayer support.
 
-## Example Park
+## Special Thanks
+ 
+ - Basssiiie: For FlexUI and helping me often along the way
+ - Manticore_007: For helping along the way and beta-testing
+ - In_Error_Predicting_A_Fault: For the banner artwork and beta-testing
+ - Timmy_Tuner: For beta-testing
 
-An example park featuring a lake and a small coaster is included in the project materials when available.
-
-## Building the Plugin
+## Building the Plugin as developer
 
 ### Prerequisites
 
@@ -171,7 +217,7 @@ An example park featuring a lake and a small coaster is included in the project 
 	npm run build:dev
 	```
 
-The development build is readable and is written directly to the OpenRCT2 plugin folder as `FireWorks.js`.
+The development build is readable and is written directly to the OpenRCT2 plugin folder as `Fireworks_Plugin.js`.
 
 ### Build Commands
 
@@ -181,17 +227,6 @@ The development build is readable and is written directly to the OpenRCT2 plugin
 
 `npm start` watches the `src/` directory and runs the development build whenever a TypeScript or JavaScript file changes.
 
-### Hot Reloading
-
-OpenRCT2 supports hot reloading during development:
-
-1. Open `config.ini` in your [OpenRCT2 user directory](#openrct2-user-directory).
-2. Set `enable_hot_reloading = true`.
-3. Run `npm start` from this repository.
-4. Start OpenRCT2 and load a park.
-5. Save a file in `src/`.
-
-The watcher will rebuild the plugin, and OpenRCT2 will reload the changed plugin file.
 
 ## Accessing Game Logs
 
@@ -232,64 +267,3 @@ The user directory can also be opened from OpenRCT2 by selecting **Open custom c
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
-
-
-
-
-[title]
-OpenRCT2 Fireworks Plugin
-
-[Oneliner]
-A plugin for OpenRCT2 that allows you create and run your own firework shows, and easily share them with others.
-
-This plugin provides an editor for creating your own fireworks and combining them into fully timed and schedulable shows which can even synced up with a ride's music. There are currently 14 different effects, each with endless customization option for size, shape and colours. Everything you make is automatically saved in the park, even actively playing shows! If you share your park with someone else, they'll see it all as long as they have the plugin too. Every park saved while fireworks are playing will save with a news message informing the park was made with fireworks and where to get the plugin, so that anyone without the plugin opening the park will know what they're missing, and how to watch it too. 
-You can also save your fireworks to local storage, and import it again in a different park if you want to re-use certain fireworks you've made before!
-The fireworks plugin is currently single-player only. It's not technically feasible right now to make it work on multiplayer.
-
-[Installation]
-Make sure that your OpenRCT2 version is up-to-date. You need at least version [latest].
-Go to the releases page and download the file fireworks-1.0.js from release 1.0.
-Save it in the plugin subfolder of your OpenRCT2 user directory.\ On Windows, this is usually at C:Users\{User}\Documents\OpenRCT2\plugin.\ 
-Start OpenRCT2 and open a scenario or save. Long-click the map icon to list your plugins, and click on "Fireworks". If this is the first time that you use this plug-in when you open the editor, it will open the tutorial too.
-
-[Tutorial]
-All info of this tutorial is available in the plugin itself, too, by going to the config tab (with the gears), and clicking the tutorial button. The first time opening the editor will auto-open the tutorial as well.
-
-The plugin has two main states, the edit mode, and play mode. If you open someone else's park who already made a fireworks show, the park will likely be in the play-mode. New files will always start in the edit mode. 
-In the edit mode you can use the fireworks editor to create your own effects, sequences, and shows. The window in play mode merely shows the shows playing and when they'll next play. This tutorial is about the editor. 
-
-Creating a fireworks show takes quite a lot of time and effort, but it's a logical set of steps.
--[Launch Sites] //basically fill this with info from the tutorialwindow
--[Loads]
--[Shells]
--[Ground Effects]
--[Sequences]
--[Shows]
--[Other]
-
--[Debugger]
-The debugger shows you various stats about particles. The game has a hard limit of 3200 particles at a time. This includes balloons, litter, money effects, ducks, explosions, smoke puffs from steam trains, water splashes and crashed vehicle particles. For the best firework show you'll want to minimize the other categories. The count the debugger shows is only the crashed vehicle particles. 
-Every time you hit test on a firework or sequence, the debugger will reset, and start keeping track of how many particles were spawned, and how often it failed to spawn one due to the limit being hit. If the particle that failed to spawn was a shell being shot up, it will also count towards either fireworks skipped, or delayed, based on the setting of the show. You can use these statistics to help keep your show under the 3200 limit. 
---Colour palettes
-Some people like to create parks with impossible to use colour palettes, I would know, I'm one of them. If for whatever reason you want to use fireworks in such a park, you would face the challenge of using the editor while you possibly can't even read text at all. To circumvent this there's the option to temporarily switch to the default palette. The plugin will remember what your true palette was, and you can put it back at any time with the manual buttons. 
-To make things easier, there's an automatic mode. If you enable it, it will switch to the default palette whenever the editor window is opened. It will switch back to the true palette every time you test a firework, or when you close the editor.
-
-[FAQ]
--Pallete issue
--q why can't I see any effects? -a You may be too zoomed out to see the particles. They are only visible on the lower three zoom levels.
--q why are my effects missing parts? -a You've likely hit the particle limit. You can only have up to 3200 miscelelanious entities at a time, the particles used by fireworks share this pool with litter, balloons, and other such particles.
--q I hit test, why can't I see my load? -a Perhaps the editor window is blocking the view?
--q How can I delay the rest of a sequence if I can't edit the times? -a Set the lock to delay, enter a new element with a big delay right in front of the section you want delayed, set the lock to time, and delete the new item again. The rest of the sequence will remain shifted forwards. To undo, just do the reverse.
-
-[Planned Features]
--More Effects
--Sounds
--non-sandbox mode, cost for fireworks, ride integration, excitment bonuses, peeps spawning to come watch
--why not multiplayer
-
-[How to build plugin yourself]
-//a shorter version of the current stuff about npm run etc
-
-
-Example park: Lake with a small coaster

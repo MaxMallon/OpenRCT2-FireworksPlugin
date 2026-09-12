@@ -66,7 +66,7 @@ class FireworksPlayer {
 			if (scheduledEntry.itemType === SequenceItemType.Sequence) {
 				const seq = scheduledEntry.runtimeItem instanceof Sequence
 					? scheduledEntry.runtimeItem as Sequence
-					: resolveSequenceFresh(scheduledEntry.itemName);
+					: persistent.resolveSequence(scheduledEntry.itemName);
 				if (seq) {
 					AddFireworksPlayer(seq, scheduledEntry.cumulativeTimeTillLight + this.tickOffset);
 				}
@@ -108,25 +108,6 @@ function normalizeFrame(value: number): number {
 	return Math.max(0, Math.floor(value));
 }
 
-/**
- * Looks up a persisted sequence by name and recalculates its cumulative times from
- * each entry's relative timeTillLight (recursing through any nested sequences).
- * A sequence's stored cumulativeTimeTillLight values are only correct if it was the
- * one most recently recalculated/edited; once nested inside another sequence they can
- * go stale (e.g. a nextItemAfterEnd gap computed against an outdated nested duration).
- * Always resolving fresh here keeps deeply nested sequences correct regardless of depth.
- */
-function resolveSequenceFresh(name: string): Sequence | undefined {
-	const seq = persistent.sequenceMap.get(name.trim());
-	if (!seq) return undefined;
-
-	const clone = new Sequence(seq.name, seq.items.map(e => new SequenceEntry(
-		e.itemName, e.itemType, e.timeTillLight, e.cumulativeTimeTillLight, e.nextItemAfterEnd
-	)));
-	clone.recalculateCumulativeTimes(0, resolveSequenceFresh);
-	return clone;
-}
-
 // ==================== Sequence flattening utilities ====================
 // Only for displaying a flattened shot list.
 
@@ -136,7 +117,7 @@ export function collectShotsInRange(sequence: Sequence, startTime: number, endTi
 		const absoluteTime = normalizeFrame(entry.cumulativeTimeTillLight) + offset;
 
 		if (entry.itemType === SequenceItemType.Sequence) {
-			const nested = resolveSequenceFresh(entry.itemName);
+			const nested = persistent.resolveSequence(entry.itemName);
 			if (nested) {
 				collectShotsInRange(nested, startTime, endTime, collected, absoluteTime);
 			}
@@ -158,7 +139,7 @@ export function flattenScheduledEntryToShots(entry: SequenceEntry, cumulativeOve
 		return [new SequenceEntry(entry.itemName, entry.itemType, 0, absoluteCumulativeTime, entry.nextItemAfterEnd, entry.runtimeItem)];
 	}
 
-	const sequence = resolveSequenceFresh(entry.itemName);
+	const sequence = persistent.resolveSequence(entry.itemName);
 	if (!sequence) return [];
 
 	const sequenceOffset = absoluteCumulativeTime;
@@ -385,9 +366,9 @@ function lightShell(shell: Shell): boolean {
 	if (!pos)
 		return false;
 	if (shell.headType == ShotHeadType.Small)
-		particle = SpawnLight(pos, shell.velocity, shell.shellColours.headColour, shell.shellColours.headColour, shell.delay + 1);
+		particle = SpawnLight(pos, shell.velocity, shell.shellColours.headColour, shell.shellColours.headColour, shell.delay + 1, true);
 	else if (shell.headType == ShotHeadType.Big)
-		particle = SpawnLightCluster(pos, shell.velocity, shell.shellColours.headColour, shell.delay + 1, 5);
+		particle = SpawnLightCluster(pos, shell.velocity, shell.shellColours.headColour, shell.delay + 1, 5, true);
 	if (!particle){
 		IncrementDelayedShotsCount();
 		return false;

@@ -98,7 +98,7 @@ export class SphereEffect extends BurstEffect {
 						c2 = this.colours.getColour("colour1");
 						SpawnLight(posOri,
 							{ x: tilePerSecond * x, y: tilePerSecond * y, z: 1.5 * counterGravity1sec + tilePerSecond * z },
-							c1, c2, this.extraLongevity + this.physicalSize * 15 + Math.random() * 15 * this.physicalSize, f);
+							c1, c2, this.extraLongevity + this.physicalSize * 15 + Math.random() * 15 * this.physicalSize, false, f);
 					} break;
 					case "blinking-uniform-2zones": {
 						let f = 0;
@@ -112,7 +112,7 @@ export class SphereEffect extends BurstEffect {
 						}
 						SpawnLight(posOri,
 							{ x: tilePerSecond * x, y: tilePerSecond * y, z: 1.5 * counterGravity1sec + tilePerSecond * z },
-							c1, c2, this.extraLongevity + this.physicalSize * 15 + Math.random() * 15 * this.physicalSize, f);
+							c1, c2, this.extraLongevity + this.physicalSize * 15 + Math.random() * 15 * this.physicalSize, false, f);
 					} break;
 					case "blinking-uniform-4zones": {
 						let f = 0;
@@ -134,7 +134,7 @@ export class SphereEffect extends BurstEffect {
 						}
 						SpawnLight(posOri,
 							{ x: tilePerSecond * x, y: tilePerSecond * y, z: 1.5 * counterGravity1sec + tilePerSecond * z },
-							c1, c2, this.extraLongevity + this.physicalSize * 15 + Math.random() * 15 * this.physicalSize, f);
+							c1, c2, this.extraLongevity + this.physicalSize * 15 + Math.random() * 15 * this.physicalSize, false, f);
 					} break;
 					case "blinking-uniform-6zones": {
 						let f = 0;
@@ -172,7 +172,7 @@ export class SphereEffect extends BurstEffect {
 						}
 						SpawnLight(posOri,
 							{ x: tilePerSecond * x, y: tilePerSecond * y, z: 1.5 * counterGravity1sec + tilePerSecond * z },
-							c1, c2, this.extraLongevity + this.physicalSize * 15 + Math.random() * 15 * this.physicalSize, f);
+							c1, c2, this.extraLongevity + this.physicalSize * 15 + Math.random() * 15 * this.physicalSize, false, f);
 					} break;
 
 

@@ -12,8 +12,12 @@ export function SpawnLight(
     colour0: Colour,
     colour1: Colour,
     time: number,
+    spawnInvisible: boolean = false,
     frame?: number
 ): CrashedVehicleParticle | null {
+    if (!spawnInvisible && colour0 === Colour.Invisible && colour1 === Colour.Invisible) {
+        return null;
+    }
     const boom = map.createEntity("crashed_vehicle_particle", pos) as CrashedVehicleParticle | null;
     if (boom) {
         spawnedParticlesCount++;    
@@ -38,10 +42,11 @@ export function SpawnLightCluster(
     velocity: CoordsXYZ,
     colour: Colour,
     time: number,
-    width: number
+    width: number,
+    spawnInvisible: boolean = false,
 ): CrashedVehicleParticle | null {
-    const shot = SpawnLight(pos, velocity, colour, colour, time); //middle
-    if (colour !== Colour.Invisible) {
+    const shot = SpawnLight(pos, velocity, colour, colour, time, spawnInvisible); //middle
+    if (colour !== Colour.Invisible || spawnInvisible) {
         SpawnLight({ x: pos.x + width, y: pos.y, z: pos.z }, velocity, colour, colour, time - 4 + Math.random() * 8);
         SpawnLight({ x: pos.x - width, y: pos.y, z: pos.z }, velocity, colour, colour, time - 4 + Math.random() * 8);
         SpawnLight({ x: pos.x, y: pos.y + width, z: pos.z }, velocity, colour, colour, time - 4 + Math.random() * 8);

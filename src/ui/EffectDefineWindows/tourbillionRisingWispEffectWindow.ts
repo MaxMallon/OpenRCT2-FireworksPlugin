@@ -26,7 +26,25 @@ export function openTourbillionRisingWispEffectWindow(effect: TourbillionRisingW
 			createNumberRow("Randomness", randomness, 0, 100),
 		],
 		onSave: () => {
-			onSave(new TourbillionRisingWispEffect(colour.get(), randomness.get()));
+			const updated = new TourbillionRisingWispEffect(
+				colour.get(),
+				randomness.get(),
+				effect?.particle ?? null,
+				effect?.timeLeft ?? TourbillionRisingWispEffect.TOTAL_TICKS,
+				effect?.position ?? { x: 0, y: 0, z: 0 }
+			);
+			if (effect) {
+				updated.posX = effect.posX;
+				updated.posY = effect.posY;
+				updated.posZ = effect.posZ;
+				updated.velX = effect.velX;
+				updated.velY = effect.velY;
+				updated.velZ = effect.velZ;
+				updated.randomSpeed = effect.randomSpeed;
+				updated.driftAngle = effect.driftAngle;
+				updated.driftStrength = effect.driftStrength;
+			}
+			onSave(updated);
 		}
 	});
 }

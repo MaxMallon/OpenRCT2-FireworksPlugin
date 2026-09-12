@@ -112,7 +112,7 @@ function getFireworksWindow()
 				content: createConfigTab()
 			}),
 			tab({
-				onOpen: () => setMainWindowColours([Colour.DarkBlue, Colour.Grey]),
+				onOpen: () => setMainWindowColours([Colour.DarkBlue, Colour.Black]),
 				image: { frameBase: 5367, frameCount: 8, frameDuration: 4 },
 				content: createAboutTabForEditor()
 			})

@@ -12,7 +12,10 @@ export class MicroBurstEffect extends BurstEffect {
 	}
 
 	static fromParkData(effect: any): MicroBurstEffect {
-		return new MicroBurstEffect(LoadColours.fromParkData(effect?.colours));
+		return new MicroBurstEffect(
+			LoadColours.fromParkData(effect?.colours),
+			effect?.speedMultiplier ?? 1
+		);
 	}
 
 	override getDuration(): number {

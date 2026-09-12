@@ -274,14 +274,24 @@ export function deserializeParkState(rawState: string, applyState: {
 		const seq = Sequence.fromParkData(item);
 		if (seq.name) sequenceMap.set(seq.name, seq);
 	}
+	applyState.setSequenceMap(sequenceMap);
 	// fromParkData() recalculates without a lookup (the map isn't fully built yet during
 	// the loop above), so nextItemAfterEnd gaps that depend on a nested sequence's duration
 	// are computed as if that nested sequence had zero length. Redo it now that every
-	// sequence is available, so nested durations are correctly folded in.
+	// sequence is available and registered in persistent state so nested durations (including
+	// deeply nested sub-sequences) are correctly folded in.
+	const resolveSeq = (name: string, visited: Set<string> = new Set<string>()): Sequence | undefined => {
+		const trimmed = name.trim();
+		if (visited.has(trimmed)) return undefined;
+		const s = sequenceMap.get(trimmed);
+		if (!s) return undefined;
+		visited.add(trimmed);
+		s.recalculateCumulativeTimes(0, n => resolveSeq(n, new Set(visited)));
+		return s;
+	};
 	for (const seq of sequenceMap.values()) {
-		seq.recalculateCumulativeTimes(0, name => sequenceMap.get(name));
+		seq.recalculateCumulativeTimes(0, name => resolveSeq(name));
 	}
-	applyState.setSequenceMap(sequenceMap);
 
 	const shotShowMap = new Map<string, Show>();
 	for (const item of parsed.shotShow ?? []) {

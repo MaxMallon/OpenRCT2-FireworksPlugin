@@ -1,4 +1,4 @@
-import { store, compute, OpenWindow, LayoutDirection, label, textbox, listview, flexible, dropdown, groupbox, box, checkbox, Colour } from "openrct2-flexui";
+import { store, compute, OpenWindow, LayoutDirection, label, textbox, listview, flexible, dropdown, groupbox, box, Colour } from "openrct2-flexui";
 import { LoadFireworks, Play, Stop, flattenScheduledEntryToShots } from "../../fireworks/fireworksEffectsPlayer";
 import { ResetCounts } from "../../fireworks/particleSpawner";
 import { getEditSequence, setEditSequence, resolveSequence, getSequenceList, setSequenceList, getShellList, getGroundEffectList, effectTick, definedSequences } from "../../fireworks/persistent";
@@ -14,6 +14,7 @@ import { colouredButton } from "../ColouredButton";
 import { SerializedSequenceEditorState } from "../../fireworks/parkStorage";
 import { confirmDiscardChanges } from "../discardChangesWindow";
 import { cloneSequence } from "../../fireworks/cloneHelpers";
+import { applySortOrder, createSortOrderStore, sortToggleButton } from "../sortToggleButton";
 
 /** Group for the sequence tab's "add item" pickers: only one open at a time, opening another switches to it. */
 const SEQUENCE_PICKER_GROUP = "sequence-picker";
@@ -253,8 +254,14 @@ export function isSequenceEditorDirty(): boolean {
         return true;
     }
 
-    const currentData = currentItems.map(e => e.toParkData());
-    const savedData = saved.items.map(e => e.toParkData());
+    const getComparableItem = (entry: SequenceEntry) => ({
+        itemName: entry.itemName,
+        itemType: entry.itemType,
+        timeTillLight: entry.timeTillLight,
+        nextItemAfterEnd: entry.nextItemAfterEnd
+    });
+    const currentData = currentItems.map(getComparableItem);
+    const savedData = saved.items.map(getComparableItem);
     return JSON.stringify(currentData) !== JSON.stringify(savedData);
 }
 
@@ -622,6 +629,9 @@ function onPlayFromIndexClick(requestedStartRow?: number): void {
     const startTick = effectTick;
     const seqToTest = cloneSequence(seq);
     seqToTest.items = seqToTest.items.slice(startRow);
+    if (startRow > 0 && seqToTest.items.length > 0) {
+        seqToTest.items[0].timeTillLight = 0;
+    }
     seqToTest.recalculateCumulativeTimes(startTick, resolveSequence);
     LoadFireworks(seqToTest);
     ResetCounts();
@@ -666,14 +676,16 @@ function onStopClick(): void {
 
 function openShellPickerWindow(onSelect: (shell: Shell) => void): void {
     const search = store("");
-    const filteredShells = compute(search, query => {
+    const newestFirst = createSortOrderStore();
+    const filteredShells = compute(search, newestFirst, (query, reversed) => {
         const q = query.trim().toLowerCase();
-        return getShellList().filter(s => {
+        const filtered = getShellList().filter(s => {
             const name = s.name.trim();
             if (!name) return false;
             if (!q) return true;
             return name.toLowerCase().indexOf(q) === 0;
         });
+        return applySortOrder(filtered, reversed);
     });
     let handle: OpenWindow | undefined;
     const mainPos = getMainWindowPosition();
@@ -687,7 +699,13 @@ function openShellPickerWindow(onSelect: (shell: Shell) => void): void {
         direction: LayoutDirection.Vertical,
         content: [
             label({ text: "Search by prefix" }),
-            textbox({ text: search, onChange: v => search.set(v), width: 260, maxLength: 64 }),
+            flexible({
+                direction: LayoutDirection.Horizontal,
+                content: [
+                    textbox({ text: search, onChange: v => search.set(v), width: 160, maxLength: 64 }),
+                    sortToggleButton(newestFirst)
+                ]
+            }),
             listview({
                 items: compute(filteredShells, shells => shells.map(s => [s.name, s.GetSpriteString()])),
                 columns: [{ header: "Name", width: "1w" },
@@ -710,14 +728,16 @@ function openShellPickerWindow(onSelect: (shell: Shell) => void): void {
 
 function openGroundEffectPickerWindow(onSelect: (ge: GroundEffect) => void): void {
     const search = store("");
-    const filteredEffects = compute(search, query => {
+    const newestFirst = createSortOrderStore();
+    const filteredEffects = compute(search, newestFirst, (query, reversed) => {
         const q = query.trim().toLowerCase();
-        return getGroundEffectList().filter(ge => {
+        const filtered = getGroundEffectList().filter(ge => {
             const name = ge.name.trim();
             if (!name) return false;
             if (!q) return true;
             return name.toLowerCase().indexOf(q) === 0;
         });
+        return applySortOrder(filtered, reversed);
     });
     let handle: OpenWindow | undefined;
     const mainPos = getMainWindowPosition();
@@ -731,7 +751,13 @@ function openGroundEffectPickerWindow(onSelect: (ge: GroundEffect) => void): voi
         direction: LayoutDirection.Vertical,
         content: [
             label({ text: "Search by prefix" }),
-            textbox({ text: search, onChange: v => search.set(v), width: 260, maxLength: 64 }),
+            flexible({
+                direction: LayoutDirection.Horizontal,
+                content: [
+                    textbox({ text: search, onChange: v => search.set(v), width: 160, maxLength: 64 }),
+                    sortToggleButton(newestFirst)
+                ]
+            }),
             listview({
                 items: compute(filteredEffects, effects => effects.map(ge => [ge.name, ge.GetSpriteString()])),
                 columns: [{ header: "Name", width: "1w" },
@@ -754,19 +780,21 @@ function openGroundEffectPickerWindow(onSelect: (ge: GroundEffect) => void): voi
 
 function openSequencePickerWindow(onSelect: (seqName: string, nextItemAfterEnd: boolean) => void): void {
     const search = store("");
+    const newestFirst = createSortOrderStore();
     const nextItemAfterEndIndex = store(1); // 0 = Start of sequence, 1 = End of sequence
     const nextAfterOptions = ["Start of sequence", "End of sequence"];
     const selectedIndex = store<number | undefined>(undefined);
-    const filteredSequences = compute(search, query => {
+    const filteredSequences = compute(search, newestFirst, (query, reversed) => {
         const q = query.trim().toLowerCase();
         const currentName = (getEditSequence()?.name ?? "").trim();
-        return getSequenceList().filter(s => {
+        const filtered = getSequenceList().filter(s => {
             const name = s.name.trim();
             if (!name) return false;
             if (currentName && (name === currentName || s.containsSequenceWithName(currentName, resolveSequence))) return false; // avoid circular references
             if (!q) return true;
             return name.toLowerCase().indexOf(q) === 0;
         });
+        return applySortOrder(filtered, reversed);
     });
     let handle: OpenWindow | undefined;
     const mainPos = getMainWindowPosition();
@@ -780,7 +808,13 @@ function openSequencePickerWindow(onSelect: (seqName: string, nextItemAfterEnd: 
         direction: LayoutDirection.Vertical,
         content: [
             label({ text: "Search by prefix" }),
-            textbox({ text: search, onChange: v => search.set(v), width: 280, maxLength: 64 }),
+            flexible({
+                direction: LayoutDirection.Horizontal,
+                content: [
+                    textbox({ text: search, onChange: v => search.set(v), width: 180, maxLength: 64 }),
+                    sortToggleButton(newestFirst)
+                ]
+            }),
             listview({
                 items: compute(filteredSequences, seqs => seqs.map(s => [s.name, `${s.items.length}`])),
                 columns: [
@@ -1061,15 +1095,31 @@ export function createSequenceTab() {
                                                 maxLength: 64,
                                                 disabled: isPlaying
                                             }),
-                                            // Lock checkboxes: [] Lock []
-                                            // Positioned to align with Time (x≈38) and Delay (x≈174) columns
+                                            // Lock mode toggle buttons: "Lock:" [Time] [Delay]
+                                            // Positioned to align with Time (x=38) and Delay (x=110) columns
                                             flexible({
                                                 direction: LayoutDirection.Horizontal,
+                                                height: 18,
                                                 content: [
-                                                    label({ text: "", width: 70 }),
-                                                    checkbox({ text: "", isChecked: lockOnTime, width: 15, disabled: isPlaying, onChange: v => lockOnTime.set(v) }),
-                                                    label({ text: compute(textColour, c => `${c}Lock`), width: 35 }),
-                                                    checkbox({ text: "", isChecked: compute(lockOnTime, v => !v), width: 22, disabled: isPlaying, onChange: v => lockOnTime.set(!v) })
+                                                    label({ text: compute(textColour, c => `${c}Lock:`), width: 38 }),
+                                                    colouredButton({
+                                                        text: compute(lockOnTime, textColour, (lock, c) => lock ? `{TOPAZ}Time` : `${c}Time`),
+                                                        width: 72,
+                                                        height: 18,
+                                                        colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
+                                                        pressed: lockOnTime,
+                                                        disabled: isPlaying,
+                                                        onClick: () => lockOnTime.set(true)
+                                                    }),
+                                                    colouredButton({
+                                                        text: compute(lockOnTime, textColour, (lock, c) => !lock ? `{TOPAZ}Delay` : `${c}Delay`),
+                                                        width: 55,
+                                                        height: 18,
+                                                        colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
+                                                        pressed: compute(lockOnTime, v => !v),
+                                                        disabled: isPlaying,
+                                                        onClick: () => lockOnTime.set(false)
+                                                    })
                                                 ]
                                             }),
                                             // Sequence entries listview (fills remaining height)
@@ -1079,7 +1129,7 @@ export function createSequenceTab() {
                                                 items: compute(editedSequenceItems, playingRelTick, isDeleteMode, playStartRow, lockOnTime,
                                                     (items, relTick, delMode, startRow, lockIsTime) => {
                                                         const offset = startRow > 0 && startRow < items.length
-                                                            ? items[startRow].cumulativeTimeTillLight - items[startRow].timeTillLight
+                                                            ? items[startRow].cumulativeTimeTillLight
                                                             : 0;
                                                         return items.map((entry, i) => {
                                                             const adjCum = entry.cumulativeTimeTillLight - offset;

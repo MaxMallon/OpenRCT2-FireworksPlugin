@@ -11,6 +11,7 @@ const KIND_LABELS: Record<string, string> = {
 	groundEffect: "Ground Effect",
 	sequence: "Sequence",
 	show: "Show",
+	unsavedEditor: "Unsaved Editor",
 };
 
 /**
