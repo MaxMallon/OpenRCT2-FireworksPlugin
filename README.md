@@ -21,6 +21,20 @@ The plugin is currently single-player only. Multiplayer support is not technical
 - Use the built-in tutorial and debugger while designing shows.
 - Temporarily switch to the default colour palette when an unusual park palette makes the editor difficult to read.
 
+
+<table>
+<tr>
+<td><img src="readme_img/fountains.png" alt="Fountains" width="400"/></td>
+<td><img src="readme_img/combine_effects.png" alt="Combined effects" width="400"/></td>
+</tr>
+<tr>
+<td><img src="readme_img/ground_effects.png" alt="Ground effects" width="400"/></td>
+<td><img src="readme_img/slow_effects.png" alt="Slow effects" width="400"/></td>
+</tr>
+</table>
+
+
+
 ## Download
 ### Plugin
 Download the plugin from here: [Fireworks_Plugin.js](/dist/Fireworks_Plugin.js)
@@ -35,8 +49,8 @@ Download the showcase park here: [Fireworks_Showcase.park](/dist/Fireworks_Plugi
 ## Installation
 
 1. Make sure OpenRCT2 is up to date. The plugin requires the minimum OpenRCT2 version of 0.5.6 (which at the time of writing this isn't released yet, so the latest development version).
-2. Download the `FireWorks.js` plugin file from the [latest release](https://github.com/MaxMallon/OpenRCT2-FireworksPlugin/releases).
-3. Copy `FireWorks.js` into the `plugin` folder in your [OpenRCT2 user directory](#openrct2-user-directory).
+2. Download the `Fireworks_Plugin.js` plugin file from the [latest release](https://github.com/MaxMallon/OpenRCT2-FireworksPlugin/releases).
+3. Copy `Fireworks_Plugin.js` into the `plugin` folder in your [OpenRCT2 user directory](#openrct2-user-directory).
 4. Start OpenRCT2 and open a scenario or saved park.
 5. Long-click the map icon to open the plugin list, then select **Fireworks**.
 
