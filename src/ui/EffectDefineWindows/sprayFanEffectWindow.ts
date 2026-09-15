@@ -1,21 +1,22 @@
+import { t } from "../../localization";
 import { store } from "openrct2-flexui";
 import { SprayFanEffect } from "../../fireworks/structures/effects/burstEffects/sprayFanEffect";
 import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, EffectSizePreset, ExplanationParagraph, normalizePatternSelection , openEffectWindow } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
 
 const explanation: ExplanationParagraph[] = [
-	{ text: "Multiple Spray Mines combine to form a fan.", height: 40 },
-	{ term: "Amount", description: "Exact number of particles per spray", height: 14 },
-	{ term: "Number Sprays", description: "Number of sprays to form the fan", height: 14 },
-	{ term: "Fan Angle", description: "The angle of the fan in a sense of how wide it is", height: 14 },
-	{ term: "Fan Orientation", description: "The angle of the fan on the ground, which\nway it faces", height: 28 },
-	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
-	{ term: "Time Till Stall", description: "The number of ticks before the particles reach\ntheir max height. Affects life time of particles.", height: 28 },
-	{ term: "Colour pattern", description: "Determines the sequence and arrangement\nof colours", height: 28 },
-	{ term: "   solid", description: "Fan is one colour", height: 14 },
-	{ term: "   2-col-alternating", description: "Sprays alternate in colour for stripes", height: 14 },
-	{ term: "   colour-sequence-layered", description: "A colour sequence is used to create horizontal\nlayers,like a rainbow", height: 28 },
-	{ term: "   colour-sequence", description: "A colour sequence is used to create vertical\nstripes, like the French flag", height: 14 },
+	{ text: t("Multiple Spray Mines combine to form a fan."), height: 40 },
+	{ term: t("Amount"), description: t("Exact number of particles per spray"), height: 14 },
+	{ term: t("Number Sprays"), description: t("Number of sprays to form the fan"), height: 14 },
+	{ term: t("Fan Angle"), description: t("The angle of the fan in a sense of how wide it is"), height: 14 },
+	{ term: t("Fan Orientation"), description: t("The angle of the fan on the ground, which\nway it faces"), height: 28 },
+	{ term: t("Extra Longevity"), description: t("Additional persistence in ticks"), height: 14 },
+	{ term: t("Time Till Stall"), description: t("The number of ticks before the particles reach\ntheir max height. Affects life time of particles."), height: 28 },
+	{ term: t("Colour pattern"), description: t("Determines the sequence and arrangement\nof colours"), height: 28 },
+	{ term: "   solid", description: t("Fan is one colour"), height: 14 },
+	{ term: "   2-col-alternating", description: t("Sprays alternate in colour for stripes"), height: 14 },
+	{ term: "   colour-sequence-layered", description: t("A colour sequence is used to create horizontal\nlayers,like a rainbow"), height: 28 },
+	{ term: "   colour-sequence", description: t("A colour sequence is used to create vertical\nstripes, like the French flag"), height: 14 },
 ];
 
 export function openSprayFanEffectWindow(effect: SprayFanEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
@@ -31,8 +32,8 @@ export function openSprayFanEffectWindow(effect: SprayFanEffect | undefined, onS
 	const pattern = normalizePatternSelection(colours.pattern, patternOptions);
 	const usesSequence = pattern === "colour-sequence-layered" || pattern === "colour-sequence";
 	const colourRows = createNamedColourPickerRows(pattern, colours, [
-		{ key: "colour1", label: "Colour 1", visibleOn: ["solid", "2-col-alternating"] },
-		{ key: "colour2", label: "Colour 2", visibleOn: ["2-col-alternating"] }
+		{ key: "colour1", label: t("Colour 1"), visibleOn: ["solid", "2-col-alternating"] },
+		{ key: "colour2", label: t("Colour 2"), visibleOn: ["2-col-alternating"] }
 	]);
 	let handle: { close: () => void } | undefined;
 	let isReopening = false;
@@ -53,10 +54,10 @@ export function openSprayFanEffectWindow(effect: SprayFanEffect | undefined, onS
 	};
 
 	handle = openEffectWindow({
-		title: "Spray Fan Effect",
+		title: t("Spray Fan Effect"),
 		width: 340,
 		height: 370,
-		saveText: isEditing ? "Update Effect" : "Add Effect",
+		saveText: isEditing ? t("Update Effect") : t("Add Effect"),
 		explanation,
 		onClose: () => {
 			if (isReopening) {
@@ -74,12 +75,12 @@ export function openSprayFanEffectWindow(effect: SprayFanEffect | undefined, onS
 				fanAngle.set(preset.spikeLength ?? 45);
 				extraLongevity.set(0);
 			}),
-			createNumberRow("Amount", amount, 10, 50),
-			createNumberRow("Number Sprays", numberSprays, 2, 20),
-			createNumberRow("Fan Angle", fanAngle, 10, 150),
-			createNumberRow("Fan Orientation", fanOrientation, 0, 90, 2),
-			createNumberRow("Extra Longevity", extraLongevity, 0, 50),
-			createNumberRow("Time Till Stall", timeTillStall, 20, 50),
+			createNumberRow(t("Amount"), amount, 10, 50),
+			createNumberRow(t("Number Sprays"), numberSprays, 2, 20),
+			createNumberRow(t("Fan Angle"), fanAngle, 10, 150),
+			createNumberRow(t("Fan Orientation"), fanOrientation, 0, 90, 2),
+			createNumberRow(t("Extra Longevity"), extraLongevity, 0, 50),
+			createNumberRow(t("Time Till Stall"), timeTillStall, 20, 50),
 			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
 			...(usesSequence ? [createSequenceDropdownRowWithReverse(colours.sequenceName, colours.reverseSequence)] : []),
 			...colourRows

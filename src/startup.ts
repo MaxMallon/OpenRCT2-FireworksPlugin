@@ -1,3 +1,4 @@
+import { t } from "./localization";
 import { showFireworksWindow } from "./ui/fireworksEditorWindow";
 import { loadParkState, saveParkState, showPositionTarget, getHasSeenTutorial, setHasSeenTutorial } from "./fireworks/persistent";
 import { initCustomSprites } from "./img/images";
@@ -26,6 +27,7 @@ export function toggleSpecialColourSchemes(on: boolean = true)
 	}
 }
 
+// Keep this marker stable because it is also used to find and remove saved park messages.
 const GetPluginMessage : string = "This park has been made with a Fireworks Show currently playing, made with the Fireworks Plugin. Please download the plugin to view the show at: ";
 let removeMessageAgain: any;
 function addParkMessageIfShowsRunning()
@@ -57,7 +59,7 @@ export function startup()
 
 	if (typeof ui !== "undefined")
 	{
-		ui.registerMenuItem("Fireworks", () => onClickMenuItem());
+		ui.registerMenuItem(t("Fireworks"), () => onClickMenuItem());
 	}
 	RemoveNewsMessageIfMessageCorrect(GetPluginMessage);
 	if (!isShowProgrammeRunning())

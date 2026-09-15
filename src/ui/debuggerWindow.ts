@@ -1,3 +1,4 @@
+import { t } from "../localization";
 import { Colour, compute, label, LayoutDirection, store, flexible, groupbox, type OpenWindow } from "openrct2-flexui";
 import { getMainWindowPosition } from "./windowState";
 import { openPopupWindow } from "./popupWindows";
@@ -29,20 +30,20 @@ function openDebuggerExplanationWindow(): void {
 	let handle: OpenWindow | undefined;
 
 	handle = openPopupWindow("debugger-info", {
-		title: "Fireworks Debugger Info",
+		title: t("Fireworks Debugger Info"),
 		width: 334,
 		height: "auto",
 		padding: 8,
 		position,
 		direction: LayoutDirection.Vertical,
 		content: [
-			label({ text: "ParticleCount is current number of crashed vehicle\nparticles. This excludes other particle types.\nTotal particle budget is 3200.", height: 36, width: "1w" }),
-			label({ text: "MiscEntityCount is current number of all other\nmisc entities. Total particle budget is 3200.", height: 36, width: "1w" }),
-			label({ text: "Attempted Particles is number of particles that have\nbeen attemped to make.", height: 28, width: "1w" }),
-			label({ text: "Skipped Particles is number of particles were attempted\nto spawn but failed due to the limit being hit.", height: 28, width: "1w" }),
-			label({ text: "Attempted Fireworks Lit is the number of shells and\nground effects set off.", height: 28, width: "1w" }),
-			label({ text: "Delayed Fireworks is the number of shells that were\n delayed a tick due to the limit being hit.", height: 28, width: "1w" }),
-			label({ text: "Skipped Fireworks is the number of shells that were\n skipped due to the limit being hit.", height: 28, width: "1w" }),
+			label({ text: t("ParticleCount is current number of crashed vehicle\nparticles. This excludes other particle types.\nTotal particle budget is 3200."), height: 36, width: "1w" }),
+			label({ text: t("MiscEntityCount is current number of all other\nmisc entities. Total particle budget is 3200."), height: 36, width: "1w" }),
+			label({ text: t("Attempted Particles is number of particles that have\nbeen attemped to make."), height: 28, width: "1w" }),
+			label({ text: t("Skipped Particles is number of particles were attempted\nto spawn but failed due to the limit being hit."), height: 28, width: "1w" }),
+			label({ text: t("Attempted Fireworks Lit is the number of shells and\nground effects set off."), height: 28, width: "1w" }),
+			label({ text: t("Delayed Fireworks is the number of shells that were\n delayed a tick due to the limit being hit."), height: 28, width: "1w" }),
+			label({ text: t("Skipped Fireworks is the number of shells that were\n skipped due to the limit being hit."), height: 28, width: "1w" }),
 			label({ text: "", height: 10, width: "1w" }),
 
             label({ text:   "Some custom palettes can make the editor hard to use.\n" +
@@ -60,7 +61,7 @@ function openDebuggerExplanationWindow(): void {
 				content: [
 					label({ text: "", width: "1w" }),
 					colouredButton({
-						text: "Close",
+						text: t("Close"),
 						width: 70,
 						height: 22,
 						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
@@ -143,7 +144,7 @@ export function openDebuggerWindow(): void {
     canRestorePaletteStore.set(canRestorePalette());
 
     openPopupWindow("debugger", {
-        title: "Fireworks Debugger",
+        title: t("Fireworks Debugger"),
         width: 250,
         height: "auto",
 		colours: [Colour.Black, Colour.OliveDark],
@@ -154,7 +155,7 @@ export function openDebuggerWindow(): void {
         },
         direction: LayoutDirection.Vertical,
         content: [
-            label({ text: "{RED}Warning: The debug window may cause lag." }),
+            label({ text: t("{RED}Warning: The debug window may cause lag.") }),
             label({ text: particleCountText }),
             label({ text: miscEntityCountText }),
             label({ text: compute(spawnedCount, n => `{WHITE}Attempted Particles: {WHITE}${n}`) }),
@@ -168,7 +169,7 @@ export function openDebuggerWindow(): void {
                 content: [
                     label({ text: "", width: "1w" }),
                     colouredButton({
-                        text: "{WHITE}Reset Counts", width: 120, height: 22,
+                        text: t("{WHITE}Reset Counts"), width: 120, height: 22,
                         colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
                         onClick: () => ResetCounts()
                     }),
@@ -182,7 +183,7 @@ export function openDebuggerWindow(): void {
                 ]
             }),
             groupbox({
-                text: "Palette Options",
+                text: t("Palette Options"),
                 width: "1w",
                 height: 68,
                 direction: LayoutDirection.Vertical,
@@ -191,7 +192,7 @@ export function openDebuggerWindow(): void {
                         direction: LayoutDirection.Horizontal,
                         content: [
                             colouredButton({
-                                text: "{WHITE}Default Palette", width: 110, height: 22,
+                                text: t("{WHITE}Default Palette"), width: 110, height: 22,
                                 colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
                                 onClick: () => {
                                     loadDefaultPalette();
@@ -199,7 +200,7 @@ export function openDebuggerWindow(): void {
                                 }
                             }),
                             colouredButton({
-                                text: "{WHITE}Restore Palette", width: 110, height: 22,
+                                text: t("{WHITE}Restore Palette"), width: 110, height: 22,
                                 colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
                                 disabled: compute(canRestorePaletteStore, c => !c),
                                 onClick: () => {
@@ -210,7 +211,7 @@ export function openDebuggerWindow(): void {
                         ]
                     }),
                     colouredButton({
-                        text: compute(testPaletteModeEnabled, enabled => enabled ? "{WHITE}Auto Switch Palettes: {GREEN}ON" : "{WHITE}Auto Switch Palettes: OFF"),
+                        text: compute(testPaletteModeEnabled, enabled => enabled ? t("{WHITE}Auto Switch Palettes: {GREEN}ON") : t("{WHITE}Auto Switch Palettes: OFF")),
                         width: 224, height: 22,
                         colour: Colour.Void, colourDark: Colour.Black, colourLight: Colour.Grey,
                         pressed: testPaletteModeEnabled,

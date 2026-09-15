@@ -1,3 +1,4 @@
+import { t } from "../../localization";
 import { box, compute, dropdown, flexible, groupbox, label, LayoutDirection, listview, store, textbox } from "openrct2-flexui";
 import { cloneEffect, cloneLoad } from "../../fireworks/cloneHelpers";
 import { openEffectEditorWindowForEffect, openEffectEditorWindowForType } from "../EffectDefineWindows/registry";
@@ -45,16 +46,16 @@ let addEffectTypeLabels: string[] | undefined;
 function getAddEffectTypeLabels(): string[] {
 	if (!addEffectTypeLabels) {
 		addEffectTypeLabels = [
-			"Add Effect",
-			sprite(GetColouredEffectSprite("effectSphere", 7)) + " Sphere",
-			sprite(GetColouredEffectSprite("effectStar", 17)) + " Star",
-			sprite(GetColouredEffectSprite("effectRing", 41)) + " Ring",
-			sprite(GetColouredEffectSprite("effectPalm", Colour.LightOrange)) + " Palm",
-			sprite(GetColouredEffectSprite("effectSprayBurst", Colour.SaturatedGreenLight)) + " Spray Burst",
-			sprite(GetColouredEffectSprite("effectShellOfShells", Colour.BrightRed)) + " Shell of Shells",
-			sprite(GetColouredEffectSprite("effectMicroBurst", Colour.BrightRed)) + " Micro Burst",
-			sprite(GetColouredEffectSprite("effectCrackle", Colour.BrightYellow)) + " Crackle",
-			sprite(GetColouredEffectSprite("effectFlyingFish", 9)) + " Flying Fish",
+			t("Add Effect"),
+			sprite(GetColouredEffectSprite("effectSphere", 7)) + t(" Sphere"),
+			sprite(GetColouredEffectSprite("effectStar", 17)) + t(" Star"),
+			sprite(GetColouredEffectSprite("effectRing", 41)) + t(" Ring"),
+			sprite(GetColouredEffectSprite("effectPalm", Colour.LightOrange)) + t(" Palm"),
+			sprite(GetColouredEffectSprite("effectSprayBurst", Colour.SaturatedGreenLight)) + t(" Spray Burst"),
+			sprite(GetColouredEffectSprite("effectShellOfShells", Colour.BrightRed)) + t(" Shell of Shells"),
+			sprite(GetColouredEffectSprite("effectMicroBurst", Colour.BrightRed)) + t(" Micro Burst"),
+			sprite(GetColouredEffectSprite("effectCrackle", Colour.BrightYellow)) + t(" Crackle"),
+			sprite(GetColouredEffectSprite("effectFlyingFish", 9)) + t(" Flying Fish"),
 		];
 	}
 	return addEffectTypeLabels;
@@ -81,17 +82,17 @@ function onTestLoadsButtonClick() {
 	}
 
 	// Validate all named references before testing
-	const ctx = buildValidationContext();	
+	const ctx = buildValidationContext();
 	const issues: ValidationIssue[] = [];
 	if (!loadToTest.isValid(ctx, issues, `Load "${loadToTest.name}"`)) {
 		if (typeof ui !== "undefined" && typeof ui.showError === "function") {
-			ui.showError("Invalid load", formatValidationIssues(issues));
+			ui.showError(t("Invalid load"), formatValidationIssues(issues));
 		}
 		return;
 	}
 	ResetCounts();
 	if (isEditorWindowObscuringCenter()) {
-		ui.showError("Window Warning", "The editor window is roughly in the centre of the screen and may obscure the effect. Consider moving it to the side.");
+		ui.showError(t("Window Warning"), t("The editor window is roughly in the centre of the screen and may obscure the effect. Consider moving it to the side."));
 	}
 	Play(true);
 	let height = 8 * 100;
@@ -112,7 +113,7 @@ function syncEditLoadFromEditor(): void {
 function validateLoadEditor(): boolean {
 	if (editedLoadEffects.get().length === 0) {
 		if (typeof ui !== "undefined" && typeof ui.showError === "function")
-			ui.showError("Invalid load", "A load must have at least one effect.");
+			ui.showError(t("Invalid load"), t("A load must have at least one effect."));
 		return false;
 	}
 	return true;
@@ -260,7 +261,7 @@ function onAddEffectTypeChange(index: number): void {
 		const referencedNames = collectShellOfShellsReferencedLoadNames(getLoadList());
 		if (currentLoadName && referencedNames.indexOf(currentLoadName) >= 0) {
 			if (typeof ui !== "undefined" && typeof ui.showError === "function") {
-				ui.showError("Invalid effect", "This load is already used in a Shell of Shells, so another Shell of Shells cannot be added here.");
+				ui.showError(t("Invalid effect"), t("This load is already used in a Shell of Shells, so another Shell of Shells cannot be added here."));
 			}
 			addEffectTypeIndex.set(0);
 			return;
@@ -328,7 +329,7 @@ export function createLoadsTab() {
 			direction: LayoutDirection.Horizontal,
 			content: [
 				groupbox({
-					text: "Load Editor",
+					text: t("Load Editor"),
 					height: "1w",
 					content: [
 						flexible({
@@ -337,11 +338,11 @@ export function createLoadsTab() {
 								box({
 									width: "1w",
 									height: 290,
-									padding: 6, text: "Current Load",
+									padding: 6, text: t("Current Load"),
 									content: flexible({
 										direction: LayoutDirection.Vertical,
 										content: [
-											label({ text: "Name" }),
+											label({ text: t("Name") }),
 											textbox({
 												text: editedLoadName,
 												onChange: value => {
@@ -351,8 +352,8 @@ export function createLoadsTab() {
 												width: 260,
 												maxLength: 64
 											}),
-											label({ text: "Effects" }),
-											label({ text: "Add Effect" }),
+											label({ text: t("Effects") }),
+											label({ text: t("Add Effect") }),
 											dropdown({
 												items: getAddEffectTypeLabels(),
 												selectedIndex: addEffectTypeIndex,
@@ -362,7 +363,7 @@ export function createLoadsTab() {
 											listview({
 												items: compute(editedLoadEffects, isEffectDeleteMode, (effects, deleteMode) => effects.map((effect, index) => {
 													const indexText = `${index + 1}`;
-													const typeText = effect.type;
+											const typeText = t(effect.type);
 													if (!deleteMode) {
 														return [indexText, typeText, effect.GetSpriteString()];
 													}
@@ -371,8 +372,8 @@ export function createLoadsTab() {
 												})),
 												columns: [
 													{ header: "#", width: "1w" },
-													{ header: "Effect", width: "2w" },
-													{ header: "Icon", width: "2w" }
+													{ header: t("Effect"), width: "2w" },
+													{ header: t("Icon"), width: "2w" }
 												],
 												width: 360,
 												height: 120,
@@ -398,7 +399,7 @@ export function createLoadsTab() {
 												direction: LayoutDirection.Horizontal,
 												content: [
 													colouredButton({
-														text: compute(isEffectDeleteMode, enabled => enabled ? "Delete Mode: {RED}ON" : "Delete Mode: OFF"),
+														text: compute(isEffectDeleteMode, enabled => enabled ? t("Delete Mode: {RED}ON") : t("Delete Mode: OFF")),
 														width: 115,
 														height: 22,
 														colour: Colour.LightBrown, colourDark: Colour.SaturatedBrown, colourLight: Colour.SaturatedBrownLight,
@@ -407,7 +408,7 @@ export function createLoadsTab() {
 													}),
 													label({ text: "", width: "1w" }),
 													colouredButton({
-														text: "{WHITE}Test Load",
+														text: t("{WHITE}Test Load"),
 														width: 90,
 														height: 22,
 														colour: Colour.LightOrange, colourDark: Colour.DarkOrange, colourLight: Colour.OrangeLight,
@@ -419,25 +420,25 @@ export function createLoadsTab() {
 												direction: LayoutDirection.Horizontal,
 												content: [
 													colouredButton({
-														text: "{WHITE}Add Load",
+														text: t("{WHITE}Add Load"),
 														width: 110,height: 22,
                                                         colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
 														onClick: addOrUpdateLoad
 													}),
 													colouredButton({
-														text: "{WHITE}New",
+														text: t("{WHITE}New"),
 														width: 50,height: 22,
                                                         colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
 														onClick: () => confirmDiscardChanges(isLoadEditorDirty, resetLoadEditor)
 													}),
 													colouredButton({
-														text: "{WHITE}Delete Load",
+														text: t("{WHITE}Delete Load"),
 														width: 80,height: 22,
                                                         colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
 														onClick: deleteSelectedLoad
 													}),
 													label({ text: "", width: "1w" }),
-													colouredButton({ text: "{BLACK}Debugger", width: 70,height: 22,
+													colouredButton({ text: t("{BLACK}Debugger"), width: 70,height: 22,
                                                         colour: Colour.Yellow, colourDark: Colour.DarkYellow, colourLight: Colour.BrightYellow, onClick: openDebuggerWindow })
 												]
 											})
@@ -448,7 +449,7 @@ export function createLoadsTab() {
 									width: 180,
 									height: "1w",
 									padding: 6,
-									text: "Defined Loads",
+									text: t("Defined Loads"),
 									content: flexible({
 										direction: LayoutDirection.Vertical,
 										content: [
@@ -461,8 +462,8 @@ export function createLoadsTab() {
 											listview({
 												items: compute(filteredLoads, loads => loads.map(load => [load.name,load.GetSpriteString()])),
 												columns: [
-													{ header: "Name", width: "1w" },													
-													{ header: "Icons", width: "1w" }
+													{ header: t("Name"), width: "1w" },
+													{ header: t("Icons"), width: "1w" }
 											],
 												width: 160,
 												height: "1w",

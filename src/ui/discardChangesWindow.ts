@@ -1,3 +1,4 @@
+import { t } from "../localization";
 import { Colour, flexible, label, LayoutDirection } from "openrct2-flexui";
 import type { OpenWindow } from "openrct2-flexui";
 import { getMainWindowPosition } from "./windowState";
@@ -28,7 +29,7 @@ export function openDiscardChangesWindow(onConfirm: () => void): void {
 	const key = `discard-changes-${++discardWindowCounter}`;
 
 	handle = openPopupWindow(key, {
-		title: "Unsaved changes",
+		title: t("Unsaved changes"),
 		width: 280,
 		height: 90,
 		padding: 8,
@@ -36,14 +37,14 @@ export function openDiscardChangesWindow(onConfirm: () => void): void {
 		colours: [Colour.BordeauxRedDark, Colour.Grey],
 		direction: LayoutDirection.Vertical,
 		content: [
-			label({ text: "{WHITE}Discard unsaved changes?", alignment: "centred" }),
+			label({ text: t("{WHITE}Discard unsaved changes?"), alignment: "centred" }),
 			label({ text: "", height: 6 }),
 			flexible({
 				direction: LayoutDirection.Horizontal,
 				content: [
 					label({ text: "", width: "1w" }),
                     colouredButton({
-						text: "{WHITE}Yes",
+						text: t("{WHITE}Yes"),
 						width: 80,
 						height: 22,
 						colour: Colour.SaturatedRed,
@@ -56,7 +57,7 @@ export function openDiscardChangesWindow(onConfirm: () => void): void {
 					}),	
 					label({ text: "", width: "1w" }),
 					colouredButton({
-						text: "Cancel",
+						text: t("Cancel"),
 						width: 80,
 						height: 22,
 						colour: Colour.Grey,

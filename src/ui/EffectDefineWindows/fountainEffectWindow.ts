@@ -1,3 +1,4 @@
+import { t } from "../../localization";
 import { button, checkbox, Colour, compute, dropdown, flexible, groupbox, label, LayoutDirection, listview, store } from "openrct2-flexui";
 import { FountainEffect, FountainEffectPhase } from "../../fireworks/structures/effects/EmitterEffects/fountainEffect";
 import { Effect } from "../../fireworks/structures/Effect";
@@ -6,25 +7,25 @@ import { openEffectWindow, createColourPickerRow, createNumberRow, EFFECT_SUB_WI
 import { colouredButton } from "../ColouredButton";
 
 const phaseExplanation: ExplanationParagraph[] = [
-	{ term: "Density", description: "Affects the number of particles", height: 14 },
-	{ term: "Max Height", description: "Affects the height that the particles reach", height: 14 },
-	{ term: "Angular Size", description: "The angle of the cone of particles.", height: 14 },
-	{ term: "Duration", description: "Number of seconds this phase lasts.", height: 14 },
-	{ term: "Colour 1-3", description: "Colours for the particles", height: 14 },
-	{ term: "Crackle", description: "Adds a crackling spark effect to the fountain", height: 14 },
-	{ term: "Crackle Colour", description: "Colour for the crackle", height: 14 },
+	{ term: t("Density"), description: t("Affects the number of particles"), height: 14 },
+	{ term: t("Max Height"), description: t("Affects the height that the particles reach"), height: 14 },
+	{ term: t("Angular Size"), description: t("The angle of the cone of particles."), height: 14 },
+	{ term: t("Duration"), description: t("Number of seconds this phase lasts."), height: 14 },
+	{ term: t("Colour 1-3"), description: t("Colours for the particles"), height: 14 },
+	{ term: t("Crackle"), description: t("Adds a crackling spark effect to the fountain"), height: 14 },
+	{ term: t("Crackle Colour"), description: t("Colour for the crackle"), height: 14 },
 	];
 
 const fountainExplanation: ExplanationParagraph[] = [
-	{ text: "A continuous spray of particles made up of one or more\nphases played back to back that gradually transition from one to the next.", height: 28 },
-	{ term: "Tilt", description: "The angle in the vertical plane of where\nthe particles are sprayed towards.\n0 = up, 90 = horizontal, 180 = down", height: 36 },
-	{ term: "Azimuth", description: "The angle in the horizontal plane of where\nthe particles are sprayed towards.", height: 28 },
-	{ term: "Add", description: "Opens the window to add a new phase at\nthe end.", height: 28 },
-	{ term: "Edit", description: "Opens the window to edit the selected phase.", height: 14 },
-	{ term: "Clone", description: "Duplicates the selected phase and inserts\nit right after.", height: 28 },
-	{ term: "Delete", description: "Deletes the selected phase.", height: 14 },
-	{ term: "^", description: "Moves the selected phase 1 postion up.", height: 14 },
-	{ term: "v", description: "Moves the selected phase 1 postion up.", height: 14 },
+	{ text: t("A continuous spray of particles made up of one or more\nphases played back to back that gradually transition from one to the next."), height: 28 },
+	{ term: t("Tilt"), description: t("The angle in the vertical plane of where\nthe particles are sprayed towards.\n0 = up, 90 = horizontal, 180 = down"), height: 36 },
+	{ term: t("Azimuth"), description: t("The angle in the horizontal plane of where\nthe particles are sprayed towards."), height: 28 },
+	{ term: t("Add"), description: t("Opens the window to add a new phase at\nthe end."), height: 28 },
+	{ term: t("Edit"), description: t("Opens the window to edit the selected phase."), height: 14 },
+	{ term: t("Clone"), description: t("Duplicates the selected phase and inserts\nit right after."), height: 28 },
+	{ term: t("Delete"), description: t("Deletes the selected phase."), height: 14 },
+	{ term: "^", description: t("Moves the selected phase 1 postion up."), height: 14 },
+	{ term: "v", description: t("Moves the selected phase 1 postion up."), height: 14 },
 	
 	
 ];
@@ -46,23 +47,23 @@ function openFountainPhaseWindow(phase: FountainEffectPhase | undefined, onSave:
 	const crackle = store(phase?.crackle ?? false);
 
 	openEffectWindow({
-		title: "Fountain Phase",
+		title: t("Fountain Phase"),
 		width: 300,
 		height: 360,
-		saveText: phase ? "Update Phase" : "Add Phase",
+		saveText: phase ? t("Update Phase") : t("Add Phase"),
 		popupKey: EFFECT_SUB_WINDOW_GROUP,
 		explanation: phaseExplanation,
 		onClose,
 		content: [
-			createNumberRow("Density", density, 1, 5),
-			createNumberRow("Max Height", maxHeight, 0, 65),
-			createNumberRow("Angular Size", angularSize, 0, 25),
-			createNumberRow("Duration (secs)", durationSecs, 1, 60),
-			createColourPickerRow("Colour 1", colour1),
-			createColourPickerRow("Colour 2", colour2),
-			createColourPickerRow("Colour 3", colour3),
-			checkbox({ text: "Crackle", isChecked: crackle, onChange: value => crackle.set(value) }),
-			createColourPickerRow("Crackle Colour", crackleColour)
+			createNumberRow(t("Density"), density, 1, 5),
+			createNumberRow(t("Max Height"), maxHeight, 0, 65),
+			createNumberRow(t("Angular Size"), angularSize, 0, 25),
+			createNumberRow(t("Duration (secs)"), durationSecs, 1, 60),
+			createColourPickerRow(t("Colour 1"), colour1),
+			createColourPickerRow(t("Colour 2"), colour2),
+			createColourPickerRow(t("Colour 3"), colour3),
+			checkbox({ text: t("Crackle"), isChecked: crackle, onChange: value => crackle.set(value) }),
+			createColourPickerRow(t("Crackle Colour"), crackleColour)
 		],
 		onSave: () => {
 			onSave(new FountainEffectPhase(
@@ -88,7 +89,7 @@ interface FountainPreset {
 //Fountains have some presets as examples
 const fountainPresets: FountainPreset[] = [
 	{
-		label: "Small Simple Fountain",
+		label: t("Small Simple Fountain"),
 		phases: [
 			new FountainEffectPhase(2, 20, Colour.BrightYellow, Colour.LightOrange, Colour.Invisible, Colour.White, false, 8,  5 * 40),
 			new FountainEffectPhase(3, 35, Colour.BrightYellow, Colour.LightOrange, Colour.Invisible, Colour.White, false, 10, 20 * 40),
@@ -97,7 +98,7 @@ const fountainPresets: FountainPreset[] = [
 		]
 	},
 	{
-		label: "Large Simple Fountain",
+		label: t("Large Simple Fountain"),
 		phases: [
 			new FountainEffectPhase(3, 20, Colour.White, Colour.Grey, Colour.Grey, Colour.White, false, 10,  8 * 40),
 			new FountainEffectPhase(4, 55, Colour.White, Colour.Grey, Colour.Grey, Colour.White, false, 12, 34 * 40),
@@ -106,7 +107,7 @@ const fountainPresets: FountainPreset[] = [
 		]
 	},
 	{
-		label: "2 Gradual Phase Fountain",
+		label: t("2 Gradual Phase Fountain"),
 		phases: [
 			new FountainEffectPhase(3, 40, Colour.BrightRed,   Colour.Invisible, Colour.Invisible, Colour.White,      false, 10, 15 * 40),
 			new FountainEffectPhase(3, 40, Colour.BrightGreen, Colour.Invisible, Colour.Invisible, Colour.White,      true,  10, 15 * 40),
@@ -114,7 +115,7 @@ const fountainPresets: FountainPreset[] = [
 		]
 	},
 	{
-		label: "3 Sharp Phase Fountain",
+		label: t("3 Sharp Phase Fountain"),
 		phases: [
 			new FountainEffectPhase(3, 45, Colour.BrightRed,  Colour.Invisible, Colour.Invisible, Colour.White, true, 10, 15 * 40),
 			new FountainEffectPhase(3, 45, Colour.BrightRed,  Colour.Invisible, Colour.Invisible, Colour.White, true, 10, 1 * 40),
@@ -138,7 +139,7 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 		return `Total Duration: ${totalSecs}s`;
 	});
 
-	const presetOptions = ["Select preset", ...fountainPresets.map(p => p.label)];
+	const presetOptions = [t("Select preset"), ...fountainPresets.map(p => p.label)];
 	const selectedPreset = store(0);
 
 	const applyPreset = (index: number): void => {
@@ -216,10 +217,10 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 	};
 
 	openEffectWindow({
-		title: "Fountain Effect",
+		title: t("Fountain Effect"),
 		width: 360,
 		height: 400,
-		saveText: effect ? "Update Effect" : "Add Effect",
+		saveText: effect ? t("Update Effect") : t("Add Effect"),
 		onClose,
 		explanation: fountainExplanation,
 		content: [
@@ -227,7 +228,7 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 				direction: LayoutDirection.Horizontal,
 				height: 14,
 				content: [
-					label({ text: "Preset", width: 140, height: 14 }),
+					label({ text: t("Preset"), width: 140, height: 14 }),
 					dropdown({
 						items: presetOptions,
 						selectedIndex: selectedPreset,
@@ -240,8 +241,8 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 					})
 				]
 			}),
-			createNumberRow("Tilt (0=up, 90=horiz)", tilt, 0, 180, 2),
-			createNumberRow("Azimuth (0=Y, 90=X)", azimuth, -360, 360, 5),
+			createNumberRow(t("Tilt (0=up, 90=horiz)"), tilt, 0, 180, 2),
+			createNumberRow(t("Azimuth (0=Y, 90=X)"), azimuth, -360, 360, 5),
 			flexible({
 				direction: LayoutDirection.Horizontal,
 				height: 14,
@@ -250,7 +251,7 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 				]
 			}),
 			groupbox({
-				text: "Phases",
+				text: t("Phases"),
 				height: 200,
 				content: [
 					listview({
@@ -259,14 +260,14 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 							`${p.maxHeight}`,
 							`${p.density}`,
 							`${p.angularSize}`,
-							p.crackle ? "Yes" : "No"
+							p.crackle ? t("Yes") : t("No")
 						])),
 						columns: [
-							{ header: "Duration", width: "1w" },
-							{ header: "Height", width: "1w" },
-							{ header: "Density", width: "1w" },
-							{ header: "Angular Size", width: "1w" },
-							{ header: "Crackle", width: "1w" }
+							{ header: t("Duration"), width: "1w" },
+							{ header: t("Height"), width: "1w" },
+							{ header: t("Density"), width: "1w" },
+							{ header: t("Angular Size"), width: "1w" },
+							{ header: t("Crackle"), width: "1w" }
 						],
 						height: 150,
 						canSelect: true,
@@ -277,10 +278,10 @@ export function openFountainEffectWindow(effect: FountainEffect | undefined, onS
 						direction: LayoutDirection.Horizontal,
 						height: 14,
 						content: [
-							colouredButton({ text: "{WHITE}Add", width: 65, height: 28, colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen, onClick: addPhase }),
-							colouredButton({ text: "Edit", width: 65, height: 28, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: editSelectedPhase }),
-							colouredButton({ text: "Clone", width: 65, height: 28, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: cloneSelectedPhase }),
-							colouredButton({ text: "{WHITE}Delete", width: 65, height: 28, colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed, onClick: removeSelectedPhase }),
+							colouredButton({ text: t("{WHITE}Add"), width: 65, height: 28, colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen, onClick: addPhase }),
+							colouredButton({ text: t("Edit"), width: 65, height: 28, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: editSelectedPhase }),
+							colouredButton({ text: t("Clone"), width: 65, height: 28, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: cloneSelectedPhase }),
+							colouredButton({ text: t("{WHITE}Delete"), width: 65, height: 28, colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed, onClick: removeSelectedPhase }),
 							button({ image: "arrow_up", width: 28, height: 28, onClick: movePhaseUp }),
 							button({ image: "arrow_down", width: 28, height: 28, onClick: movePhaseDown })
 						]

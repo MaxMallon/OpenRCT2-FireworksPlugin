@@ -1,24 +1,25 @@
+import { t } from "../../localization";
 import { store } from "openrct2-flexui";
 import { StarEffect } from "../../fireworks/structures/effects/burstEffects/starEffect";
 import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, ExplanationParagraph, normalizePatternSelection, openEffectWindow } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
 
 const explanation: ExplanationParagraph[] = [
-	{ text: "A symmetrical star with spikes of particles coming from a middle point.\n", height: 40 },
-	{ term: "Density", description: "Affects number of particles", height: 14 },
-	{ term: "Size", description: "Physical size of effect, affects duration\nof the effect", height: 28 },
-	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
-	{ term: "Spike Length", description: "Number of particles per spike", height: 14 },
-	{ term: "Colour pattern", description: "Determines the sequence and arrangement\nof colours", height: 28 },
-	{ term: "   one-pair", description: "Star made of a single type of particle", height: 14 },
-	{ term: "   2-halves", description: "Two halve stars of different colours", height: 14 },
-	{ term: "   2-mixed", description: "Two colours mixed randomly", height: 14 },
-	{ term: "   3-mixed", description: "Three colours mixed randomly", height: 14 },
-	{ term: "   random", description: "Using a colour sequence in random order", height: 14 },
-	{ term: "   2-layer-gumball", description: "A star with an innard of one colour\nand an outer layer of another colour", height: 28 },
-	{ term: "   3-layer-gumball", description: "A star with three inside-outside\nlayers of colours, like a gumball", height: 28 },
-	{ term: "   colour-sequence-gumball", description: "A star with colours arranged in a gumball\npattern according to the sequence", height: 28 },
-	{ term: "   colour-sequence-layered", description: "A star with colours arranged in layers\n according to the sequence", height: 28 },
+	{ text: t("A symmetrical star with spikes of particles coming from a middle point.\n"), height: 40 },
+	{ term: t("Density"), description: t("Affects number of particles"), height: 14 },
+	{ term: t("Size"), description: t("Physical size of effect, affects duration\nof the effect"), height: 28 },
+	{ term: t("Extra Longevity"), description: t("Additional persistence in ticks"), height: 14 },
+	{ term: t("Spike Length"), description: t("Number of particles per spike"), height: 14 },
+	{ term: t("Colour pattern"), description: t("Determines the sequence and arrangement\nof colours"), height: 28 },
+	{ term: "   one-pair", description: t("Star made of a single type of particle"), height: 14 },
+	{ term: "   2-halves", description: t("Two halve stars of different colours"), height: 14 },
+	{ term: "   2-mixed", description: t("Two colours mixed randomly"), height: 14 },
+	{ term: "   3-mixed", description: t("Three colours mixed randomly"), height: 14 },
+	{ term: "   random", description: t("Using a colour sequence in random order"), height: 14 },
+	{ term: "   2-layer-gumball", description: t("A star with an innard of one colour\nand an outer layer of another colour"), height: 28 },
+	{ term: "   3-layer-gumball", description: t("A star with three inside-outside\nlayers of colours, like a gumball"), height: 28 },
+	{ term: "   colour-sequence-gumball", description: t("A star with colours arranged in a gumball\npattern according to the sequence"), height: 28 },
+	{ term: "   colour-sequence-layered", description: t("A star with colours arranged in layers\n according to the sequence"), height: 28 },
 ];
 
 export function openStarEffectWindow(effect: StarEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
@@ -38,19 +39,19 @@ export function openStarEffectWindow(effect: StarEffect | undefined, onSave: (ef
 	const pattern = normalizePatternSelection(colours.pattern, patternOptions);
 	const usesSequence = pattern === "random" || pattern === "colour-sequence-gumball" || pattern === "colour-sequence-layered";
 	const colourRows = createNamedColourPickerRows(pattern, colours, [
-		{ key: "baseColour", label: "Base Colour", visibleOn: [] },
-		{ key: "colour1", label: "Colour 1", visibleOn: ["one-pair"] },
-		{ key: "colour2", label: "Colour 2", visibleOn: ["one-pair"] },
-		{ key: "colour3", label: "Colour 3", visibleOn: [] },
-		{ key: "colour4", label: "Colour 4", visibleOn: [] },
-		{ key: "colour5", label: "Colour 5", visibleOn: [] },
-		{ key: "colour6", label: "Colour 6", visibleOn: [] },
-		{ key: "colour1A", label: "Colour 1A", visibleOn: ["2-halves", "2-mixed", "3-mixed", "2-layer-gumball", "3-layer-gumball"] },
-		{ key: "colour2A", label: "Colour 2A", visibleOn: ["2-halves", "2-mixed", "3-mixed", "2-layer-gumball", "3-layer-gumball"] },
-		{ key: "colour1B", label: "Colour 1B", visibleOn: ["2-halves", "2-mixed", "3-mixed", "2-layer-gumball", "3-layer-gumball"] },
-		{ key: "colour2B", label: "Colour 2B", visibleOn: ["2-halves", "2-mixed", "3-mixed", "2-layer-gumball", "3-layer-gumball"] },
-		{ key: "colour1C", label: "Colour 1C", visibleOn: ["3-mixed", "3-layer-gumball"] },
-		{ key: "colour2C", label: "Colour 2C", visibleOn: ["3-mixed", "3-layer-gumball"] }
+		{ key: "baseColour", label: t("Base Colour"), visibleOn: [] },
+		{ key: "colour1", label: t("Colour 1"), visibleOn: ["one-pair"] },
+		{ key: "colour2", label: t("Colour 2"), visibleOn: ["one-pair"] },
+		{ key: "colour3", label: t("Colour 3"), visibleOn: [] },
+		{ key: "colour4", label: t("Colour 4"), visibleOn: [] },
+		{ key: "colour5", label: t("Colour 5"), visibleOn: [] },
+		{ key: "colour6", label: t("Colour 6"), visibleOn: [] },
+		{ key: "colour1A", label: t("Colour 1A"), visibleOn: ["2-halves", "2-mixed", "3-mixed", "2-layer-gumball", "3-layer-gumball"] },
+		{ key: "colour2A", label: t("Colour 2A"), visibleOn: ["2-halves", "2-mixed", "3-mixed", "2-layer-gumball", "3-layer-gumball"] },
+		{ key: "colour1B", label: t("Colour 1B"), visibleOn: ["2-halves", "2-mixed", "3-mixed", "2-layer-gumball", "3-layer-gumball"] },
+		{ key: "colour2B", label: t("Colour 2B"), visibleOn: ["2-halves", "2-mixed", "3-mixed", "2-layer-gumball", "3-layer-gumball"] },
+		{ key: "colour1C", label: t("Colour 1C"), visibleOn: ["3-mixed", "3-layer-gumball"] },
+		{ key: "colour2C", label: t("Colour 2C"), visibleOn: ["3-mixed", "3-layer-gumball"] }
 	]);
 	let handle: { close: () => void } | undefined;
 	let isReopening = false;
@@ -63,10 +64,10 @@ export function openStarEffectWindow(effect: StarEffect | undefined, onSave: (ef
 	};
 
 	handle = openEffectWindow({
-		title: "Star Effect",
+		title: t("Star Effect"),
 		width: 320,
 		height: 610,
-		saveText: isEditing ? "Update Effect" : "Add Effect",
+		saveText: isEditing ? t("Update Effect") : t("Add Effect"),
 		explanation,
 		onClose: () => {
 			if (isReopening) {
@@ -77,10 +78,10 @@ export function openStarEffectWindow(effect: StarEffect | undefined, onSave: (ef
 			onClose?.();
 		},
 		content: [
-			createNumberRow("Density", size, 1, 100),
-			createNumberRow("Size", physicalSize, 1, 6, 0.1),
-			createNumberRow("Extra Longevity", extraLongevity, 0, 100),
-			createNumberRow("Spike Length", spikeLength, 1, 20),
+			createNumberRow(t("Density"), size, 1, 100),
+			createNumberRow(t("Size"), physicalSize, 1, 6, 0.1),
+			createNumberRow(t("Extra Longevity"), extraLongevity, 0, 100),
+			createNumberRow(t("Spike Length"), spikeLength, 1, 20),
 			createEffectSizePresetRow(sizePresets, preset => {
 				size.set(preset.size);
 				physicalSize.set(preset.physicalSize);

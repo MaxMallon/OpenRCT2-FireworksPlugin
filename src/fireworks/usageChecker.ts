@@ -1,3 +1,4 @@
+import { isKorean, t } from "../localization";
 import { ColourSequence } from "./structures/ColourStructures";
 import { cloneEffect, cloneLoad, cloneSequence } from "./cloneHelpers";
 import { getLoadMap, getShellMap, getGroundEffectMap, getSequenceMap, getShotShowMap, resolveSequence, setLoadList, setShellList, setGroundEffectList, setSequenceList, setShotShow, colourSequences, launchSites, getEditLoad, setEditLoad, getShellToEdit, setShellToEdit, getGroundEffectToEdit, setGroundEffectToEdit, getEditSequence, setEditSequence, getEditShow, setEditShow } from "./persistent";
@@ -79,7 +80,7 @@ export interface UsageReference {
 
 /** Build a usage reference for an item currently selected in an unsaved (not-yet-added) editor tab. */
 function unsavedEditorUsage(detail: string): UsageReference {
-	return { kind: "unsavedEditor", name: "Current unsaved editor state", detail };
+	return { kind: "unsavedEditor", name: t("Current unsaved editor state"), detail };
 }
 
 // ---------------------------------------------------------------------------
@@ -99,11 +100,11 @@ export function findColourSequenceUsages(seqName: string): UsageReference[] {
 
 	const editedLoad = getEditLoad();
 	if (editedLoad && editedLoad.effects.some(e => (e.colours?.sequenceName ?? "").trim() === trimmed)) {
-		refs.push(unsavedEditorUsage("Load tab (unsaved load)"));
+		refs.push(unsavedEditorUsage(t("Load tab (unsaved load)")));
 	}
 	const editedGroundEffect = getGroundEffectToEdit();
 	if (editedGroundEffect && editedGroundEffect.effects.some(e => (e.colours?.sequenceName ?? "").trim() === trimmed)) {
-		refs.push(unsavedEditorUsage("Ground effect tab (unsaved ground effect)"));
+		refs.push(unsavedEditorUsage(t("Ground effect tab (unsaved ground effect)")));
 	}
 	return refs;
 }
@@ -126,15 +127,15 @@ export function findLaunchSiteUsages(siteName: string): UsageReference[] {
 
 	const editedShell = getShellToEdit();
 	if (editedShell && typeof editedShell.position === "string" && editedShell.position.trim() === trimmed) {
-		refs.push(unsavedEditorUsage("Shell tab (unsaved shell)"));
+		refs.push(unsavedEditorUsage(t("Shell tab (unsaved shell)")));
 	}
 	const editedGroundEffect = getGroundEffectToEdit();
 	if (editedGroundEffect && editedGroundEffect.position.trim() === trimmed) {
-		refs.push(unsavedEditorUsage("Ground effect tab (unsaved ground effect)"));
+		refs.push(unsavedEditorUsage(t("Ground effect tab (unsaved ground effect)")));
 	}
 	const editedShow = getEditShow();
 	if (editedShow && (editedShow.launchTerrain ?? "").trim() === trimmed) {
-		refs.push(unsavedEditorUsage("Show tab (unsaved show)"));
+		refs.push(unsavedEditorUsage(t("Show tab (unsaved show)")));
 	}
 	return refs;
 }
@@ -149,9 +150,9 @@ export function findLoadUsages(loadName: string): UsageReference[] {
 	const refs: UsageReference[] = [];
 	for (const shell of getShellMap().values()) {
 		if (shell.load.loadName.trim() === trimmed) {
-			refs.push({ kind: "shell", name: shell.name, detail: "main load" });
+			refs.push({ kind: "shell", name: shell.name, detail: t("main load") });
 		} else if (shell.ascendEffects.some(e => e.loadName.trim() === trimmed)) {
-			refs.push({ kind: "shell", name: shell.name, detail: "ascend load" });
+			refs.push({ kind: "shell", name: shell.name, detail: t("ascend load") });
 		}
 	}
 	// Shell of Shells sub-loads inside other loads
@@ -160,7 +161,7 @@ export function findLoadUsages(loadName: string): UsageReference[] {
 			if (effect.type === EffectType.ShellOfShells) {
 				const subLoads: ShellLoad[] = (effect as unknown as { subLoads?: ShellLoad[] }).subLoads ?? [];
 				if (subLoads.some(sl => sl.loadName.trim() === trimmed)) {
-					refs.push({ kind: "load", name: load.name, detail: "Shell of Shells sub-load" });
+					refs.push({ kind: "load", name: load.name, detail: t("Shell of Shells sub-load") });
 					break;
 				}
 			}
@@ -169,7 +170,7 @@ export function findLoadUsages(loadName: string): UsageReference[] {
 
 	const editedShell = getShellToEdit();
 	if (editedShell && (editedShell.load.loadName.trim() === trimmed || editedShell.ascendEffects.some(e => e.loadName.trim() === trimmed))) {
-		refs.push(unsavedEditorUsage("Shell tab (unsaved shell)"));
+		refs.push(unsavedEditorUsage(t("Shell tab (unsaved shell)")));
 	}
 	const editedLoad = getEditLoad();
 	if (editedLoad) {
@@ -177,7 +178,7 @@ export function findLoadUsages(loadName: string): UsageReference[] {
 			if (effect.type === EffectType.ShellOfShells) {
 				const subLoads: ShellLoad[] = (effect as unknown as { subLoads?: ShellLoad[] }).subLoads ?? [];
 				if (subLoads.some(sl => sl.loadName.trim() === trimmed)) {
-					refs.push(unsavedEditorUsage("Load tab (unsaved load, Shell of Shells sub-load)"));
+					refs.push(unsavedEditorUsage(t("Load tab (unsaved load, Shell of Shells sub-load)")));
 					break;
 				}
 			}
@@ -199,7 +200,7 @@ export function findShellUsages(shellName: string): UsageReference[] {
 
 	const editedSequence = getEditSequence();
 	if (editedSequence && editedSequence.items.some(e => e.itemType === SequenceItemType.Shell && e.itemName.trim() === trimmed)) {
-		refs.push(unsavedEditorUsage("Sequence tab (unsaved sequence)"));
+		refs.push(unsavedEditorUsage(t("Sequence tab (unsaved sequence)")));
 	}
 	return refs;
 }
@@ -217,7 +218,7 @@ export function findGroundEffectUsages(geName: string): UsageReference[] {
 
 	const editedSequence = getEditSequence();
 	if (editedSequence && editedSequence.items.some(e => e.itemType === SequenceItemType.GroundEffect && e.itemName.trim() === trimmed)) {
-		refs.push(unsavedEditorUsage("Sequence tab (unsaved sequence)"));
+		refs.push(unsavedEditorUsage(t("Sequence tab (unsaved sequence)")));
 	}
 	return refs;
 }
@@ -240,11 +241,11 @@ export function findSequenceUsages(seqName: string): UsageReference[] {
 
 	const editedSequence = getEditSequence();
 	if (editedSequence && editedSequence.items.some(e => e.itemType === SequenceItemType.Sequence && e.itemName.trim() === trimmed)) {
-		refs.push(unsavedEditorUsage("Sequence tab (unsaved sequence)"));
+		refs.push(unsavedEditorUsage(t("Sequence tab (unsaved sequence)")));
 	}
 	const editedShow = getEditShow();
 	if (editedShow && editedShow.sequence.trim() === trimmed) {
-		refs.push(unsavedEditorUsage("Show tab (unsaved show)"));
+		refs.push(unsavedEditorUsage(t("Show tab (unsaved show)")));
 	}
 	return refs;
 }
@@ -594,7 +595,7 @@ export function formatValidationIssues(issues: ValidationIssue[], maxShown: numb
 	const rest = issues.length - shown.length;
 	const lines = shown.map(i => `\u2022 ${i.problem} (at ${i.path})`);
 	if (rest > 0) {
-		lines.push(`\u2026 and ${rest} more issue${rest > 1 ? "s" : ""}`);
+		lines.push(isKorean() ? `\u2026 그 외 문제 ${rest}개` : `\u2026 and ${rest} more issue${rest > 1 ? "s" : ""}`);
 	}
 	return lines.join("\n");
 }

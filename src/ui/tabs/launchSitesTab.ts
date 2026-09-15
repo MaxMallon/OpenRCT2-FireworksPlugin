@@ -1,3 +1,4 @@
+import { t } from "../../localization";
 import { absolute, box, button, Colour, compute, flexible, graphics, label, LayoutDirection, listview, store, textbox, viewport } from "openrct2-flexui";
 import { groupbox } from "openrct2-flexui";
 import { numberInputSpinner } from "../numberInputSpinner";
@@ -380,7 +381,7 @@ export function createLaunchSitesTab() {
 	return flexible({
 		content: [
 			groupbox({
-				text: "Launch Sites",
+				text: t("Launch Sites"),
 				content: [
 					flexible({
 						direction: LayoutDirection.Horizontal,
@@ -389,7 +390,7 @@ export function createLaunchSitesTab() {
 								width: 300,
 								height: "1w",
 								padding: 6,
-								text: "Current site",
+								text: t("Current site"),
 								content: flexible({
 									direction: LayoutDirection.Vertical,
 									height: 290,
@@ -404,19 +405,19 @@ export function createLaunchSitesTab() {
 											direction: LayoutDirection.Horizontal,
 											content: [
 												colouredButton({
-													text: "{WHITE}Add Site",
+													text: t("{WHITE}Add Site"),
 													width: 70, height: 18,
                                                     colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
 													onClick: addLaunchSite
 												}),
 												colouredButton({
-													text: "{WHITE}New",
+													text: t("{WHITE}New"),
 													width: 70, height: 18,
                                                     colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
 													onClick: () => confirmDiscardChanges(isLaunchSiteEditorDirty, clearCurrentSite)
 												}),
 												colouredButton({
-													text: "{WHITE}Delete Site",
+													text: t("{WHITE}Delete Site"),
 													width: 70, height: 18,
                                                     colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
 													onClick: deleteSelectedLaunchSite
@@ -424,7 +425,7 @@ export function createLaunchSitesTab() {
 											]
 										}),
 										colouredButton({
-											text: "Pick on map",
+											text: t("Pick on map"),
 											width: 120, height: 18,
                                             colour: Colour.OliveDark, colourDark: Colour.GrassGreenDark, colourLight: Colour.OliveGreen,
 											pressed: pickerToolActive,
@@ -434,10 +435,10 @@ export function createLaunchSitesTab() {
 											direction: LayoutDirection.Horizontal,
 											content: [
 												label({
-													text: compute(launchSiteEntityId, value => value === undefined ? "Entity: none" : `Entity: ${value}`)
+													text: compute(launchSiteEntityId, value => value === undefined ? t("Entity: none") : `Entity: ${value}`)
 												}),
 												colouredButton({
-													text: "Unfollow",
+													text: t("Unfollow"),
 													width: 70, height: 18,
                                                     colour: Colour.OliveDark, colourDark: Colour.GrassGreenDark, colourLight: Colour.OliveGreen,
 													onClick: unfollowEntity
@@ -447,7 +448,7 @@ export function createLaunchSitesTab() {
 										flexible({
 											direction: LayoutDirection.Horizontal,
 											content: [groupbox({
-												text: compute(launchSiteEntityId, value => value === undefined ? "Coordinates" : "Offset from entity"),
+												text: compute(launchSiteEntityId, value => value === undefined ? t("Coordinates") : t("Offset from entity")),
 												content: [
 													numberInputSpinner({
 														labelText: "X",
@@ -566,7 +567,7 @@ export function createLaunchSitesTab() {
 							box({
 								width: 280,
 								height: "1w",
-								text: "Defined Launch Sites",
+								text: t("Defined Launch Sites"),
 								padding: 6,
 								content: flexible({
 									direction: LayoutDirection.Vertical,
@@ -574,11 +575,11 @@ export function createLaunchSitesTab() {
 										listview({
 											items: compute(launchSitesRevision, () => launchSites.map(site => [`${site.name}`, `${site.position.x}`, `${site.position.y}`, `${site.position.z}`, site.entityId === undefined ? "-" : `${site.entityId}`])),
 											columns: [
-												{ header: "Name", width: "2w" },
+												{ header: t("Name"), width: "2w" },
 												{ header: "X", width: "1w" },
 												{ header: "Y", width: "1w" },
 												{ header: "Z", width: "1w" },
-												{ header: "Entity", width: "1w" }
+												{ header: t("Entity"), width: "1w" }
 											],
 											width: 260,
 											height: "1w",

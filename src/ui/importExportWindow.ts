@@ -1,3 +1,4 @@
+import { t } from "../localization";
 import { Colour, flexible, label, LayoutDirection, listview, store, textbox } from "openrct2-flexui";
 import type { OpenWindow } from "openrct2-flexui";
 import {
@@ -187,20 +188,20 @@ function openConflictWindow(_imported: ParsedData, conflicts: ConflictSummary, o
 	let handle: OpenWindow | undefined;
 
 	const rows: string[][] = [
-		...(conflicts.loads > 0 ? [["Loads", `${conflicts.loads}`]] : []),
-		...(conflicts.shells > 0 ? [["Shells", `${conflicts.shells}`]] : []),
-		...(conflicts.groundEffects > 0 ? [["Ground Effects", `${conflicts.groundEffects}`]] : []),
-		...(conflicts.sequences > 0 ? [["Sequences", `${conflicts.sequences}`]] : []),
-		...(conflicts.shows > 0 ? [["Shows", `${conflicts.shows}`]] : []),
-		...(conflicts.colourSequences > 0 ? [["Colour Sequences", `${conflicts.colourSequences}`]] : []),
-		...(conflicts.launchSites > 0 ? [["Launch Sites", `${conflicts.launchSites}`]] : []),
+		...(conflicts.loads > 0 ? [[t("Loads"), `${conflicts.loads}`]] : []),
+		...(conflicts.shells > 0 ? [[t("Shells"), `${conflicts.shells}`]] : []),
+		...(conflicts.groundEffects > 0 ? [[t("Ground Effects"), `${conflicts.groundEffects}`]] : []),
+		...(conflicts.sequences > 0 ? [[t("Sequences"), `${conflicts.sequences}`]] : []),
+		...(conflicts.shows > 0 ? [[t("Shows"), `${conflicts.shows}`]] : []),
+		...(conflicts.colourSequences > 0 ? [[t("Colour Sequences"), `${conflicts.colourSequences}`]] : []),
+		...(conflicts.launchSites > 0 ? [[t("Launch Sites"), `${conflicts.launchSites}`]] : []),
 	];
 
 	const listH = Math.max(30, Math.min(100, rows.length * 16 + 16));
 	const totalH = 120 + listH;
 
 	handle = openPopupWindow("import-name-conflicts", {
-		title: "Name Conflicts",
+		title: t("Name Conflicts"),
 		width: 380,
 		height: totalH,
 		padding: 8,
@@ -208,38 +209,38 @@ function openConflictWindow(_imported: ParsedData, conflicts: ConflictSummary, o
 		colours: [Colour.DarkOrange, Colour.Grey],
 		direction: LayoutDirection.Vertical,
 		content: [
-			label({ text: "{WHITE}Some names exist in both datasets:" }),
+			label({ text: t("{WHITE}Some names exist in both datasets:") }),
 			listview({
 				items: store(rows),
 				columns: [
-					{ header: "Type", width: "2w" },
-					{ header: "Conflicts", width: "1w" }
+					{ header: t("Type"), width: "2w" },
+					{ header: t("Conflicts"), width: "1w" }
 				],
 				width: "1w",
 				height: listH,
 				canSelect: false
 			}),
 			label({ text: "" }),
-			label({ text: "{WHITE}Which version would you like to keep?" }),
+			label({ text: t("{WHITE}Which version would you like to keep?") }),
 			flexible({
 				direction: LayoutDirection.Horizontal,
 				content: [
 					colouredButton({
-						text: "Cancel",
+						text: t("Cancel"),
 						width: 70,
 						height: 22,
 						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 						onClick: () => handle?.close()
 					}),
 					colouredButton({
-						text: "Keep existing",
+						text: t("Keep existing"),
 						width: 110,
 						height: 22,
 						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 						onClick: () => { handle?.close(); onResolved(false); }
 					}),
 					colouredButton({
-						text: "Keep new",
+						text: t("Keep new"),
 						width: 80,
 						height: 22,
 						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
@@ -261,7 +262,7 @@ export function openExportWindow(): void {
 	exportsListStore.set(Object.keys(loadSavedExports()).map(n => [n]));
 
 	handle = openPopupWindow("export-data", {
-		title: "Export Fireworks Data",
+		title: t("Export Fireworks Data"),
 		width: 380,
 		height: 235,
 		padding: 8,
@@ -269,15 +270,15 @@ export function openExportWindow(): void {
 		colours: [Colour.DarkBlue, Colour.Grey],
 		direction: LayoutDirection.Vertical,
 		content: [
-			label({ text: "Existing exports:" }),
+			label({ text: t("Existing exports:") }),
 			listview({
 				items: exportsListStore,
-				columns: [{ header: "Name", width: "1w" }],
+				columns: [{ header: t("Name"), width: "1w" }],
 				width: "1w",
 				height: 120,
 				canSelect: false
 			}),
-			label({ text: "Save current data as:" }),
+			label({ text: t("Save current data as:") }),
 			textbox({
 				text: nameInput,
 				onChange: v => nameInput.set(v),
@@ -288,14 +289,14 @@ export function openExportWindow(): void {
 				direction: LayoutDirection.Horizontal,
 				content: [
 					colouredButton({
-						text: "Cancel",
+						text: t("Cancel"),
 						width: 70,
 						height: 22,
 						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 						onClick: () => handle?.close()
 					}),
 					colouredButton({
-						text: "{WHITE}Save",
+						text: t("{WHITE}Save"),
 						width: 80,
 						height: 22,
 						colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
@@ -366,7 +367,7 @@ export function openImportWindow(): void {
 	}
 
 	handle = openPopupWindow("import-data", {
-		title: "Import Fireworks Data",
+		title: t("Import Fireworks Data"),
 		width: 380,
 		height: 240,
 		padding: 8,
@@ -374,10 +375,10 @@ export function openImportWindow(): void {
 		colours: [Colour.DarkBlue, Colour.Grey],
 		direction: LayoutDirection.Vertical,
 		content: [
-			label({ text: "Select an export to import:" }),
+			label({ text: t("Select an export to import:") }),
 			listview({
 				items: exportsListStore,
-				columns: [{ header: "Name", width: "1w" }],
+				columns: [{ header: t("Name"), width: "1w" }],
 				width: "1w",
 				height: 160,
 				canSelect: true,
@@ -391,28 +392,28 @@ export function openImportWindow(): void {
 				direction: LayoutDirection.Horizontal,
 				content: [
 					colouredButton({
-						text: "Cancel",
+						text: t("Cancel"),
 						width: 70,
 						height: 22,
 						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 						onClick: () => handle?.close()
 					}),
 					colouredButton({
-						text: "{WHITE}Import Overwrite",
+						text: t("{WHITE}Import Overwrite"),
 						width: 120,
 						height: 22,
 						colour:Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
 						onClick: doOverwrite
 					}),
 					colouredButton({
-						text: "{WHITE}Import Add",
+						text: t("{WHITE}Import Add"),
 						width: 90,
 						height: 22,
 						colour:  Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
 						onClick: doAdd
 					}),
 					colouredButton({
-						text: "{WHITE}Delete",
+						text: t("{WHITE}Delete"),
 						width: 70,
 						height: 22,
 						colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,

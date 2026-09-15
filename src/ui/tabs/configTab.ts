@@ -1,4 +1,5 @@
-import { colourPicker, compute, flexible, groupbox, label, LayoutDirection, listview, store, textbox, Colour } from "openrct2-flexui";
+import { getLanguage, setLanguage, t } from "../../localization";
+import { colourPicker, compute, dropdown, flexible, groupbox, label, LayoutDirection, listview, store, textbox, Colour } from "openrct2-flexui";
 import type { OpenWindow } from "openrct2-flexui";
 import { numberInputSpinner } from "../numberInputSpinner";
 import { ColourSequence, maxColourSequenceLength } from "../../fireworks/structures/ColourStructures";
@@ -21,6 +22,7 @@ const DEFAULT_COLOUR_SEQUENCE_EDITOR = {
 };
 
 const selectedColourSequenceIndex = store<number | undefined>(DEFAULT_COLOUR_SEQUENCE_EDITOR.selectedIndex);
+const selectedLanguageIndex = store(getLanguage() === "ko-KR" ? 1 : 0);
 const colourSequenceName = store(DEFAULT_COLOUR_SEQUENCE_EDITOR.name);
 const colourSequenceLength = store(DEFAULT_COLOUR_SEQUENCE_EDITOR.length);
 const colourSequenceColourStores = [
@@ -232,7 +234,7 @@ function openDeleteAllDataConfirmWindow(onConfirm: () => void): void
 		: "center" as const;
 
 	handle = openPopupWindow("config-delete-all-data", {
-		title: "Delete All Data",
+		title: t("Delete All Data"),
 		width: 300,
 		height: 100,
 		padding: 8,
@@ -240,14 +242,14 @@ function openDeleteAllDataConfirmWindow(onConfirm: () => void): void
 		colours: [Colour.BordeauxRedDark, Colour.Grey],
 		direction: LayoutDirection.Vertical,
 		content: [
-			label({ text: "{WHITE}Are you sure?" }),
-			label({ text: "{WHITE}This will permanently delete all fireworks data." }),
+			label({ text: t("{WHITE}Are you sure?") }),
+			label({ text: t("{WHITE}This will permanently delete all fireworks data.") }),
 			flexible({
 				direction: LayoutDirection.Horizontal,
 				content: [
 					label({ text: "", width: "1w" }),
 					colouredButton({
-						text: "Cancel",
+						text: t("Cancel"),
 						width: 80,
 						height: 22,
 						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
@@ -255,7 +257,7 @@ function openDeleteAllDataConfirmWindow(onConfirm: () => void): void
 					}),
 					label({ text: "", width: "1w" }),
 					colouredButton({
-						text: "{RED}Yes",
+						text: t("{RED}Yes"),
 						width: 80,
 						height: 22,
 						colour: Colour.Black, colourDark: Colour.Void, colourLight: Colour.Grey,
@@ -279,21 +281,21 @@ export function createConfigTab()
 			direction: LayoutDirection.Horizontal,
 			content: [
 				groupbox({
-					text: "Other Settings",
+					text: t("Other Settings"),
 					width: "1w",
 					height: "1w",
 					direction: LayoutDirection.Horizontal,
 					content: [
 						groupbox({
-					text: "Colour Sequence Editor",
+					text: t("Colour Sequence Editor"),
 					width: "1w",
 					height: 290,
 					content: [
 								listview({
 									items: compute(colourSequences, sequences => sequences.map(sequence => [sequence.name, `${sequence.colours.length}`])),
 									columns: [
-										{ header: "Name", width: "2w" },
-										{ header: "Length", width: "1w" }
+										{ header: t("Name"), width: "2w" },
+										{ header: t("Length"), width: "1w" }
 									],
 									width: 260,
 									height: 120,
@@ -305,21 +307,21 @@ export function createConfigTab()
 									direction: LayoutDirection.Horizontal,
 									content: [
 										colouredButton({
-											text: "{WHITE}Add / Update",
+											text: t("{WHITE}Add / Update"),
 											width: 80,
 											height: 30,
 											colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
 											onClick: addOrUpdateColourSequence
 										}),
 										colouredButton({
-											text: "{WHITE}New",
+											text: t("{WHITE}New"),
 											width: 80,
 											height: 30,
 											colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
 											onClick: () => confirmDiscardChanges(isColourSequenceEditorDirty, resetColourSequenceEditor)
 										}),
 										colouredButton({
-											text: "{WHITE}Delete",
+											text: t("{WHITE}Delete"),
 											width: 80,
 											height: 30,
 											colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
@@ -327,7 +329,7 @@ export function createConfigTab()
 										})
 									]
 								}),
-								label({ text: "Selected sequence" }),
+								label({ text: t("Selected sequence") }),
 								textbox({
 									text: colourSequenceName,
 									onChange: value => {
@@ -340,7 +342,7 @@ export function createConfigTab()
 									direction: LayoutDirection.Horizontal,
 									content: [
 										numberInputSpinner({
-											labelText: "Colours",
+											labelText: t("Colours"),
 											labelWidth: 70,
 											valueStore: colourSequenceLength,
 											onChange: value => {
@@ -363,38 +365,55 @@ export function createConfigTab()
 							]
 				}),
 				groupbox({
-					text: "Settings",
+					text: t("Settings"),
 					width: "1w",
 					height: 290,
 					content: [
+						flexible({
+							direction: LayoutDirection.Horizontal,
+							height: 20,
+							content: [
+								label({ text: t("Language"), width: 80 }),
+								dropdown({
+									items: ["English", "한국어"],
+									selectedIndex: selectedLanguageIndex,
+									width: 190,
+									onChange: index => {
+										selectedLanguageIndex.set(index);
+										setLanguage(index === 1 ? "ko-KR" : "en-GB");
+									}
+								})
+							]
+						}),
+						label({ text: t("Restart OpenRCT2 to apply the language."), height: 14 }),
 						colouredButton({
 							width: 290,
-							height: 65,
+							height: 52,
 							colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
-							text: "{WHITE}Delete all data",
+							text: t("{WHITE}Delete all data"),
 							onClick: () => openDeleteAllDataConfirmWindow(() => {
 								resetPersistentStateToDefaults();
 							})
 						}),
 						colouredButton({
 							width: 290,
-							height: 65,
+							height: 52,
 							colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
-							text: "Export Data",
+							text: t("Export Data"),
 							onClick: openExportWindow
 						}),
 						colouredButton({
 							width: 290,
-							height: 65,
+							height: 52,
 							colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
-							text: "Import Data",
+							text: t("Import Data"),
 							onClick: openImportWindow
 						}),
 						colouredButton({
 							width: 290,
-							height: 65,
+							height: 52,
 							colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
-							text: "Open Tutorial",
+							text: t("Open Tutorial"),
 							onClick: openTutorialWindow
 						})
 					]

@@ -1,3 +1,4 @@
+import { isKorean, localizedMetric, t } from "../../localization";
 import { colourPicker, compute, dropdown, flexible, store, textbox , horizontal, label, LayoutDirection, type FlexibleLayoutContainer, type OpenWindow, window, Colour } from "openrct2-flexui";
 import { getMainWindowPosition } from "../windowState";
 import { makePopupGroupSwitchable, openPopupCustom, openPopupWindow } from "../popupWindows";
@@ -27,7 +28,7 @@ export interface ExplanationParagraph
 }
 
 const defaultExplanation: ExplanationParagraph[] = [
-	{ text: "No additional information is available for this effect yet.", height: 26 }
+	{ text: t("No additional information is available for this effect yet."), height: 26 }
 ];
 
 /** Opens (or replaces) the small context-aware info popup describing the current effect. */
@@ -38,31 +39,40 @@ export function openEffectExplanationWindow(title: string, paragraphs: Explanati
 	let handle: OpenWindow | undefined;
 
 	handle = openPopupWindow(`effect-explanation-${title}`, {
-		title: `${title} Info`,
-		width: 460,
+		title: `${title} ${t("Info")}`,
+		width: localizedMetric(460, 620),
 		height: "auto",
 		padding: 8,
 		position,
 		direction: LayoutDirection.Vertical,
 		content: [
-			...paragraphs.map(paragraph => paragraph.term !== undefined
+			...paragraphs.map(paragraph => {
+				const estimateLines = (text: string, charsPerLine: number) => text.split("\n")
+					.reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
+				const lineCount = Math.max(
+					estimateLines(paragraph.text ?? "", 80),
+					estimateLines(paragraph.term ?? "", 24),
+					estimateLines(paragraph.description ?? "", 52)
+				);
+				const paragraphHeight = isKorean() ? Math.max(14, lineCount * 14) : paragraph.height;
+				return paragraph.term !== undefined
 				? flexible({
 					direction: LayoutDirection.Horizontal,
-					height: paragraph.height,
+					height: paragraphHeight,
 					content: [
 						label({ text: "", width: 10 }),
-						label({ text: paragraph.term, width: 180, height: paragraph.height }),
-						label({ text: paragraph.description ?? "", width: "1w", height: paragraph.height })
+						label({ text: paragraph.term, width: 180, height: paragraphHeight }),
+						label({ text: paragraph.description ?? "", width: "1w", height: paragraphHeight })
 					]
 				})
-				: label({ text: paragraph.text ?? "", height: paragraph.height, width: "1w" })
-			),
+				: label({ text: paragraph.text ?? "", height: paragraphHeight, width: "1w" });
+			}),
 			horizontal({
 				height: 22,
 				content: [
 					label({ text: "", width: "1w", height: 8 }),
 					colouredButton({
-						text: "Close",
+						text: t("Close"),
 						width: 70,
 						height: 22,
 						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
@@ -119,7 +129,7 @@ export function openEffectWindow(options: EffectWindowTemplateOptions): OpenWind
 					}),
 					label({ text: "", width: "1w" }),
 					colouredButton({
-						text: "Cancel",
+						text: t("Cancel"),
 						width: 70,
 						height: 22,
 						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
@@ -299,13 +309,13 @@ export function createSequenceDropdownRowWithReverse(sequenceName: ReturnType<ty
 		}
 	}
 	const selectedIndex = store(selectedIndexValue);
-	const items = compute(sequenceNames, names => ["No sequence", ...names]);
+	const items = compute(sequenceNames, names => [t("No sequence"), ...names]);
 
 	return flexible({
 		direction: LayoutDirection.Horizontal,
 		height: 14,
 		content: [
-			label({ text: "Colour Sequence", width: 140, height: 14 }),
+			label({ text: t("Colour Sequence"), width: 140, height: 14 }),
 			dropdown({
 				items,
 				selectedIndex,
@@ -327,7 +337,7 @@ export function createSequenceDropdownRowWithReverse(sequenceName: ReturnType<ty
 	});
 }
 
-export function createPatternDropdownRow(patternName: ReturnType<typeof store<string>>, options: string[], onPatternChange?: () => void, labelText: string = "Colour Pattern")
+export function createPatternDropdownRow(patternName: ReturnType<typeof store<string>>, options: string[], onPatternChange?: () => void, labelText: string = t("Colour Pattern"))
 {
 	const initialPattern = normalizePatternSelection(patternName, options);
 	const selectedIndex = store(resolveDropdownIndex(initialPattern, options));
@@ -380,7 +390,7 @@ export function createNumberRow(labelText: string, valueStore: ReturnType<typeof
 	});
 }
 
-export function createEffectSizePresetRow<T extends { label: string }>(presets: T[], onApplyPreset: (preset: T) => void, labelText: string = "Preset")
+export function createEffectSizePresetRow<T extends { label: string }>(presets: T[], onApplyPreset: (preset: T) => void, labelText: string = t("Preset"))
 {
 	return flexible({
 		direction: LayoutDirection.Horizontal,

@@ -1,24 +1,25 @@
+import { t } from "../../localization";
 import { checkbox, store } from "openrct2-flexui";
 import { PalmEffect } from "../../fireworks/structures/effects/burstEffects/palmEffect";
 import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, ExplanationParagraph, normalizePatternSelection, openEffectWindow } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
 
 const explanation: ExplanationParagraph[] = [
-	{ text: "A cluster of comets fired outward, arcing down like the\ndrooping leaves of a palm tree.\n", height: 40 },
-	{ term: "Density", description: "Affects number of comets", height: 14 },
-	{ term: "Size", description: "Physical size of effect, affects duration\nof the effect", height: 28 },
-	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
-	{ term: "Comets Burst Crackle", description: "Each comet ends in a crackle", height: 14 },
-	{ term: "Comet Head Big", description: "Gives the comets a larger cluster head\ninstead of a single particle", height: 28 },
-	{ term: "Azimuth", description: "Orientation of the effect in the horizontal plane", height: 14 },
-	{ term: "Tilt", description: "Orientation of the effect in the vertical plane", height: 14 },
-	{ term: "Random Angle", description: "Ignores azimuth and tilt, using a random\norientation each time the effect fires", height: 28 },
-	{ term: "Comet Trail Density", description: "Controls the density of the comet trails", height: 14 },
-	{ term: "Comet Trail Width", description: "Controls the width of the comet trails", height: 14 },
-	{ term: "Colour pattern", description: "Determines the sequence and arrangement\nof colours", height: 28 },
-	{ term: "   comets-one-type", description: "One set of colours for the comets", height: 14 },
-	{ term: "   comets-two-halves", description: "One set of colours for comets fired up,\nand one for the ones down", height: 28 },
-	{ term: "   comets-mixed", description: "Two sets of colours, to be mixed randomly", height: 14 },
+	{ text: t("A cluster of comets fired outward, arcing down like the\ndrooping leaves of a palm tree.\n"), height: 40 },
+	{ term: t("Density"), description: t("Affects number of comets"), height: 14 },
+	{ term: t("Size"), description: t("Physical size of effect, affects duration\nof the effect"), height: 28 },
+	{ term: t("Extra Longevity"), description: t("Additional persistence in ticks"), height: 14 },
+	{ term: t("Comets Burst Crackle"), description: t("Each comet ends in a crackle"), height: 14 },
+	{ term: t("Comet Head Big"), description: t("Gives the comets a larger cluster head\ninstead of a single particle"), height: 28 },
+	{ term: t("Azimuth"), description: t("Orientation of the effect in the horizontal plane"), height: 14 },
+	{ term: t("Tilt"), description: t("Orientation of the effect in the vertical plane"), height: 14 },
+	{ term: t("Random Angle"), description: t("Ignores azimuth and tilt, using a random\norientation each time the effect fires"), height: 28 },
+	{ term: t("Comet Trail Density"), description: t("Controls the density of the comet trails"), height: 14 },
+	{ term: t("Comet Trail Width"), description: t("Controls the width of the comet trails"), height: 14 },
+	{ term: t("Colour pattern"), description: t("Determines the sequence and arrangement\nof colours"), height: 28 },
+	{ term: "   comets-one-type", description: t("One set of colours for the comets"), height: 14 },
+	{ term: "   comets-two-halves", description: t("One set of colours for comets fired up,\nand one for the ones down"), height: 28 },
+	{ term: "   comets-mixed", description: t("Two sets of colours, to be mixed randomly"), height: 14 },
 ];
 
 export function openPalmEffectWindow(effect: PalmEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
@@ -43,18 +44,18 @@ export function openPalmEffectWindow(effect: PalmEffect | undefined, onSave: (ef
 	const patternOptions = ["comets-one-type", "comets-2-halves", "comets-mixed"];
 	const pattern = normalizePatternSelection(colours.pattern, patternOptions);
 	const colourRows = createNamedColourPickerRows(pattern, colours, [
-		{ key: "head", label: "Head", visibleOn: ["comets-one-type"] },
-		{ key: "trail1", label: "Trail 1", visibleOn: ["comets-one-type"] },
-		{ key: "trail2", label: "Trail 2", visibleOn: ["comets-one-type"] },
-		{ key: "crackle", label: "Crackle", visibleOn: ["comets-one-type"] },
-		{ key: "headA", label: "Head A", visibleOn: ["comets-2-halves", "comets-mixed"] },
-		{ key: "trail1A", label: "Trail 1A", visibleOn: ["comets-2-halves", "comets-mixed"] },
-		{ key: "trail2A", label: "Trail 2A", visibleOn: ["comets-2-halves", "comets-mixed"] },
-		{ key: "crackleA", label: "Crackle A", visibleOn: ["comets-2-halves", "comets-mixed"] },
-		{ key: "headB", label: "Head B", visibleOn: ["comets-2-halves", "comets-mixed"] },
-		{ key: "trail1B", label: "Trail 1B", visibleOn: ["comets-2-halves", "comets-mixed"] },
-		{ key: "trail2B", label: "Trail 2B", visibleOn: ["comets-2-halves", "comets-mixed"] },
-		{ key: "crackleB", label: "Crackle B", visibleOn: ["comets-2-halves", "comets-mixed"] }
+		{ key: "head", label: t("Head"), visibleOn: ["comets-one-type"] },
+		{ key: "trail1", label: t("Trail 1"), visibleOn: ["comets-one-type"] },
+		{ key: "trail2", label: t("Trail 2"), visibleOn: ["comets-one-type"] },
+		{ key: "crackle", label: t("Crackle"), visibleOn: ["comets-one-type"] },
+		{ key: "headA", label: t("Head A"), visibleOn: ["comets-2-halves", "comets-mixed"] },
+		{ key: "trail1A", label: t("Trail 1A"), visibleOn: ["comets-2-halves", "comets-mixed"] },
+		{ key: "trail2A", label: t("Trail 2A"), visibleOn: ["comets-2-halves", "comets-mixed"] },
+		{ key: "crackleA", label: t("Crackle A"), visibleOn: ["comets-2-halves", "comets-mixed"] },
+		{ key: "headB", label: t("Head B"), visibleOn: ["comets-2-halves", "comets-mixed"] },
+		{ key: "trail1B", label: t("Trail 1B"), visibleOn: ["comets-2-halves", "comets-mixed"] },
+		{ key: "trail2B", label: t("Trail 2B"), visibleOn: ["comets-2-halves", "comets-mixed"] },
+		{ key: "crackleB", label: t("Crackle B"), visibleOn: ["comets-2-halves", "comets-mixed"] }
 	]);
 	let handle: { close: () => void } | undefined;
 	let isReopening = false;
@@ -67,10 +68,10 @@ export function openPalmEffectWindow(effect: PalmEffect | undefined, onSave: (ef
 	};
 
 	handle = openEffectWindow({
-		title: "Palm Effect",
+		title: t("Palm Effect"),
 		width: 320,
 		height: 620,
-		saveText: isEditing ? "Update Effect" : "Add Effect",
+		saveText: isEditing ? t("Update Effect") : t("Add Effect"),
 		explanation,
 		onClose: () => {
 			if (isReopening) {
@@ -81,29 +82,29 @@ export function openPalmEffectWindow(effect: PalmEffect | undefined, onSave: (ef
 			onClose?.();
 		},
 		content: [
-			createNumberRow("Density", size, 50, 150),
-			createNumberRow("Size", physicalSize, 1, 6, 0.1),
-			createNumberRow("Extra Longevity", extraLongevity, 0, 100),
+			createNumberRow(t("Density"), size, 50, 150),
+			createNumberRow(t("Size"), physicalSize, 1, 6, 0.1),
+			createNumberRow(t("Extra Longevity"), extraLongevity, 0, 100),
 			createEffectSizePresetRow(sizePresets, preset => {
 				size.set(preset.size);
 				physicalSize.set(preset.physicalSize);
 				extraLongevity.set(preset.extraLongevity);
 			}),
 			checkbox({
-				text: "Comet Bursts Crackle",
+				text: t("Comet Bursts Crackle"),
 				isChecked: crackle,
 				onChange: value => crackle.set(value)
 			}),
 			checkbox({
-				text: "Comet Head Big",
+				text: t("Comet Head Big"),
 				isChecked: bigHead,
 				onChange: value => bigHead.set(value)
 			}),
-			createNumberRow("Azimuth", azimuth, 0, 360),
-			createNumberRow("Tilt", tilt, 0, 360),
-			checkbox({ text: "Random Angle", isChecked: randomAngle, onChange: value => randomAngle.set(value) }),
-			createNumberRow("Comet Trail Density", trailDensity, 0, 1, 0.1),
-			createNumberRow("Comet Trail Width", trailWidth, 0, 5, 0.5),			
+			createNumberRow(t("Azimuth"), azimuth, 0, 360),
+			createNumberRow(t("Tilt"), tilt, 0, 360),
+			checkbox({ text: t("Random Angle"), isChecked: randomAngle, onChange: value => randomAngle.set(value) }),
+			createNumberRow(t("Comet Trail Density"), trailDensity, 0, 1, 0.1),
+			createNumberRow(t("Comet Trail Width"), trailWidth, 0, 5, 0.5),
 			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
 			...colourRows
 		],

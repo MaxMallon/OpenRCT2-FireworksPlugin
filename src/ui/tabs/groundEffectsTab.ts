@@ -1,3 +1,4 @@
+import { t } from "../../localization";
 import { box, Colour, compute, dropdown, flexible, groupbox, label, LayoutDirection, listview, store, textbox } from "openrct2-flexui";
 import { cloneEffect, cloneGroundEffect } from "../../fireworks/cloneHelpers";
 import { openEffectEditorWindowForEffect, openEffectEditorWindowForType } from "../EffectDefineWindows/registry";
@@ -48,13 +49,13 @@ let addEffectTypeLabels: string[] | undefined;
 function getAddEffectTypeLabels(): string[] {
 	if (!addEffectTypeLabels) {
 		addEffectTypeLabels = [
-			"Add Effect",
-			sprite(GetColouredEffectSprite("effectSprayMine", Colour.BrightRed)) + " Spray Mine",
-			sprite(GetColouredEffectSprite("effectSprayFan", Colour.LightBlue)) + " Spray Fan",
-			sprite(GetColouredEffectSprite("effectCometMine", Colour.LightPurple)) + " Comet Mine",
-			sprite(GetColouredEffectSprite("effectCometFan", Colour.BrightGreen)) + " Comet Fan",
-			sprite(GetColouredEffectSprite("effectFountain", Colour.LightOrange)) + " Fountain",
-			sprite(GetColouredEffectSprite("effectWisp", Colour.White)) + " Tourbillion Rising Wisp",
+			t("Add Effect"),
+			sprite(GetColouredEffectSprite("effectSprayMine", Colour.BrightRed)) + t(" Spray Mine"),
+			sprite(GetColouredEffectSprite("effectSprayFan", Colour.LightBlue)) + t(" Spray Fan"),
+			sprite(GetColouredEffectSprite("effectCometMine", Colour.LightPurple)) + t(" Comet Mine"),
+			sprite(GetColouredEffectSprite("effectCometFan", Colour.BrightGreen)) + t(" Comet Fan"),
+			sprite(GetColouredEffectSprite("effectFountain", Colour.LightOrange)) + t(" Fountain"),
+			sprite(GetColouredEffectSprite("effectWisp", Colour.White)) + t(" Tourbillion Rising Wisp"),
 		];
 	}
 	return addEffectTypeLabels;
@@ -94,7 +95,7 @@ function onTestGroundEffectButtonClick(): void {
 		const issues: ValidationIssue[] = [];
 		if (!currentEdit.isValid(ctx, issues, `Ground effect "${currentEdit.name}"`)) {
 			if (typeof ui !== "undefined" && typeof ui.showError === "function") {
-				ui.showError("Invalid ground effect", formatValidationIssues(issues));
+				ui.showError(t("Invalid ground effect"), formatValidationIssues(issues));
 			}
 			return;
 		}
@@ -178,13 +179,13 @@ function syncEditorToEdit(): void {
 function validateGroundEffectEditor(): boolean {
 	if (editedEffects.get().length === 0) {
 		if (typeof ui !== "undefined" && typeof ui.showError === "function")
-			ui.showError("Invalid ground effect", "A ground effect must have at least one effect.");
+			ui.showError(t("Invalid ground effect"), t("A ground effect must have at least one effect."));
 		return false;
 	}
 
 	if (!selectedLaunchSiteName.get().trim()) {
 		if (typeof ui !== "undefined" && typeof ui.showError === "function")
-			ui.showError("Invalid ground effect", "A ground effect must have a selected launch site.");
+			ui.showError(t("Invalid ground effect"), t("A ground effect must have a selected launch site."));
 		return false;
 	}
 
@@ -426,7 +427,7 @@ export function createGroundEffectsTab() {
 			direction: LayoutDirection.Horizontal,
 			content: [
 				groupbox({
-					text: "Ground Effects Editor",
+					text: t("Ground Effects Editor"),
 					content: [
 						flexible({
 							direction: LayoutDirection.Horizontal,
@@ -435,11 +436,11 @@ export function createGroundEffectsTab() {
 									width: 350,
 									height: 290,
 									padding: 6,
-									text: "Current Ground Effect",
+									text: t("Current Ground Effect"),
 									content: flexible({
 										direction: LayoutDirection.Vertical,
 										content: [
-											label({ text: "Name" }),
+											label({ text: t("Name") }),
 											textbox({
 												text: editedName,
 												onChange: value => {
@@ -449,11 +450,11 @@ export function createGroundEffectsTab() {
 												width: 260,
 												maxLength: 64
 											}),
-											label({ text: "Launch Site" }),
+											label({ text: t("Launch Site") }),
 											dropdown({
 												items: compute(launchSitesRevision, () => {
 													const names = launchSites.map(site => site.name);
-													return ["[None]", ...names];
+													return [t("[None]"), ...names];
 												}),
 												selectedIndex: compute(launchSitesRevision, selectedLaunchSiteName, () => {
 													const names = launchSites.map(site => site.name);
@@ -473,8 +474,8 @@ export function createGroundEffectsTab() {
 												},
 												autoDisable: "never"
 											}),
-											label({ text: "Effects" }),
-											label({ text: "Add Effect" }),
+											label({ text: t("Effects") }),
+											label({ text: t("Add Effect") }),
 											dropdown({
 												items: getAddEffectTypeLabels(),
 												selectedIndex: addEffectTypeIndex,
@@ -484,7 +485,7 @@ export function createGroundEffectsTab() {
 											listview({
 												items: compute(editedEffects, isEffectDeleteMode, (effects, deleteMode) => effects.map((effect, index) => {
 													const indexText = `${index + 1}`;
-													const typeText = effect.type;
+											const typeText = t(effect.type);
 													if (!deleteMode) {
 														return [indexText, typeText, effect.GetSpriteString()];
 													}
@@ -493,8 +494,8 @@ export function createGroundEffectsTab() {
 												})),
 												columns: [
 													{ header: "#", width: "1w" },
-													{ header: "Effect", width: "2w" },
-													{ header: "Icon", width: "2w" }
+													{ header: t("Effect"), width: "2w" },
+													{ header: t("Icon"), width: "2w" }
 												],
 												width: "1w",
 												height: 90,
@@ -518,20 +519,20 @@ export function createGroundEffectsTab() {
 												direction: LayoutDirection.Horizontal,
 												content: [
 													colouredButton({
-														text: compute(isEffectDeleteMode, enabled => enabled ? "Delete Mode: {RED}ON" : "Delete Mode: OFF"),
+														text: compute(isEffectDeleteMode, enabled => enabled ? t("Delete Mode: {RED}ON") : t("Delete Mode: OFF")),
 														width: 115, height: 22,
 														colour: Colour.LightBrown, colourDark: Colour.SaturatedBrown, colourLight: Colour.SaturatedBrownLight,
 														pressed: isEffectDeleteMode, onClick: onDeleteEffectClick
 													}),
 													label({ text: "", width: "1w" }),
 													colouredButton({
-														text: "{WHITE}Test Ground Effect",
+														text: t("{WHITE}Test Ground Effect"),
 														width: 115, height: 22,
 														colour: Colour.LightOrange, colourDark: Colour.DarkOrange, colourLight: Colour.OrangeLight,
 														onClick: onTestGroundEffectButtonClick
 															}),
 															colouredButton({
-																text: "{RED}Stop", width: 40, height: 22,
+																text: t("{RED}Stop"), width: 40, height: 22,
 																colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: onStopClick
 													})
 												]
@@ -540,26 +541,26 @@ export function createGroundEffectsTab() {
 												direction: LayoutDirection.Horizontal,
 												content: [
 													colouredButton({
-														text: "{WHITE}Add Ground Effect",
+														text: t("{WHITE}Add Ground Effect"),
 														width: 110, height: 22,
 														colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
 														onClick: addOrUpdateGroundEffect
 													}),
 													colouredButton({
-														text: "{WHITE}New",
+														text: t("{WHITE}New"),
 														width: 50, height: 22,
 														colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
 														onClick: () => confirmDiscardChanges(isGroundEffectEditorDirty, resetEditor)
 													}),
 													colouredButton({
-														text: "{WHITE}Delete G.E.",
+														text: t("{WHITE}Delete G.E."),
 														width: 90, height: 22,
 														colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
 														onClick: deleteSelectedGroundEffect
 													}),
 													label({ text: "", width: "1w" }),
 													colouredButton({
-														text: "{BLACK}Debugger", width: 70, height: 22,
+														text: t("{BLACK}Debugger"), width: 70, height: 22,
 														colour: Colour.Yellow, colourDark: Colour.DarkYellow, colourLight: Colour.BrightYellow, onClick: openDebuggerWindow
 													})
 												]
@@ -571,7 +572,7 @@ export function createGroundEffectsTab() {
 									width: "1w",
 									height: "1w",
 									padding: 6,
-									text: "Defined Ground Effects",
+									text: t("Defined Ground Effects"),
 									content: flexible({
 										direction: LayoutDirection.Vertical,
 										content: [
@@ -584,8 +585,8 @@ export function createGroundEffectsTab() {
 											listview({
 												items: compute(filteredGroundEffects, effects => effects.map(e => [e.name, e.GetSpriteString()])),
 												columns: [
-													{ header: "Name", width: "3w" },
-													{ header: "Icons", width: "2w" }
+													{ header: t("Name"), width: "3w" },
+													{ header: t("Icons"), width: "2w" }
 												],
 												width: "1w",
 												height: "1w",

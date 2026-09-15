@@ -1,3 +1,4 @@
+import { t } from "../localization";
 import { Colour, store } from "openrct2-flexui";
 import { ColourSequence } from "./structures/ColourStructures";
 import { defaultColourSequences, deserializeParkState, serializeParkState } from "./parkStorage";
@@ -78,7 +79,7 @@ function warnIfParkUsesNewerPluginVersion(savedVersion: string): void
 		return;
 	}
 
-	const title = "Newer Fireworks Plugin Version";
+	const title = t("Newer Fireworks Plugin Version");
 	const message = `This park was saved with Fireworks ${savedVersion}, but this installation is ${pluginVersion}. An attempt to load has been made, but some or all features may be broken.\nDownload the new version from ${downloadURL}`;
 	if (typeof ui !== "undefined")
 	{
