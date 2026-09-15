@@ -1,11 +1,12 @@
+import { t } from "../../localization";
 import { store } from "openrct2-flexui";
 import { PictEffect } from "../../fireworks/structures/effects/burstEffects/pictEffect";
 import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNumberRow, ExplanationParagraph, openEffectWindow } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
 
 const explanation: ExplanationParagraph[] = [
-	{ text: "A simple burst of particles from the burst point, without any of\nthe colour pattern or shaping options found on the more elaborate\nburst effects.\n", height: 40 },
-	{ text: "Useful as a lightweight placeholder shape, or when you just want a\nplain coloured pop without extra configuration.", height: 30 }
+	{ text: t("A simple burst of particles from the burst point, without any of\nthe colour pattern or shaping options found on the more elaborate\nburst effects.\n"), height: 40 },
+	{ text: t("Useful as a lightweight placeholder shape, or when you just want a\nplain coloured pop without extra configuration."), height: 30 }
 ];
 
 export function openPictEffectWindow(effect: PictEffect | undefined, onSave: (effect: Effect) => void, onClose?: () => void): void
@@ -22,16 +23,16 @@ export function openPictEffectWindow(effect: PictEffect | undefined, onSave: (ef
 	const colours = createLoadColoursEditor(effect?.colours);
 
 	openEffectWindow({
-		title: "Pict Effect",
+		title: t("Pict Effect"),
 		width: 320,
 		height: 330,
-		saveText: effect ? "Update Effect" : "Add Effect",
+		saveText: effect ? t("Update Effect") : t("Add Effect"),
 		onClose,
 		explanation,
 		content: [
-			createNumberRow("Size", size, 0, 9999),
-			createNumberRow("Physical Size", physicalSize, 0, 9999),
-			createNumberRow("Extra Longevity", extraLongevity, 0, 9999),
+			createNumberRow(t("Size"), size, 0, 9999),
+			createNumberRow(t("Physical Size"), physicalSize, 0, 9999),
+			createNumberRow(t("Extra Longevity"), extraLongevity, 0, 9999),
 			createEffectSizePresetRow(sizePresets, preset => {
 				size.set(preset.size);
 				physicalSize.set(preset.physicalSize);

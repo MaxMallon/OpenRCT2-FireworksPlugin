@@ -1,3 +1,4 @@
+import { t } from "../localization";
 import { Colour, compute, store, WidgetCreator, FlexiblePosition } from "openrct2-flexui";
 import { colouredButton } from "./ColouredButton";
 
@@ -14,7 +15,7 @@ export function createSortOrderStore(): ReturnType<typeof store<boolean>>
 export function sortToggleButton(newestFirst: ReturnType<typeof store<boolean>>, width = 100, height = 20): WidgetCreator<FlexiblePosition>
 {
 	return colouredButton({
-		text: compute(newestFirst, reversed => reversed ? "Sort: New-Old" : "Sort: Old-New"),
+		text: compute(newestFirst, reversed => reversed ? t("Sort: New-Old") : t("Sort: Old-New")),
 		width,
 		height,
 		colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,

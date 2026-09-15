@@ -1,3 +1,4 @@
+import { t } from "../../localization";
 import { Colour, compute, flexible, label, LayoutDirection, listview, OpenWindow, store, textbox, window } from "openrct2-flexui";
 import { cloneLoad } from "../../fireworks/cloneHelpers";
 import { loadContainsShellOfShellsEffect } from "../../fireworks/usageChecker";
@@ -38,7 +39,7 @@ export function openShellOfShellsLoadSelectionWindow(loads: Load[], selectedLoad
 	openPopupCustom(EFFECT_SUB_WINDOW_GROUP, onClose =>
 	{
 		const template = window({
-		title: "Select Custom Load",
+		title: t("Select Custom Load"),
 		width: 320,
 		height: 260,
 		padding: 8,
@@ -46,7 +47,7 @@ export function openShellOfShellsLoadSelectionWindow(loads: Load[], selectedLoad
 		onClose,
 		direction: LayoutDirection.Vertical,
 		content: [
-			label({ text: "Search by prefix" }),
+			label({ text: t("Search by prefix") }),
 			textbox({
 				text: search,
 				onChange: value => search.set(value),
@@ -56,9 +57,9 @@ export function openShellOfShellsLoadSelectionWindow(loads: Load[], selectedLoad
 			listview({
 				items: compute(filteredLoads, nextLoads => nextLoads.map(load => [load.name, load.GetSpriteString(), `${load.effects.length}`])),
 				columns: [
-					{ header: "Load", width: "2w" },
-					{ header: "Effects", width: "1w" },
-					{ header: "Count", width: "1w" }
+					{ header: t("Load"), width: "2w" },
+					{ header: t("Effects"), width: "1w" },
+					{ header: t("Count"), width: "1w" }
 				],
 				width: 292,
 				height: 160,
@@ -77,9 +78,9 @@ export function openShellOfShellsLoadSelectionWindow(loads: Load[], selectedLoad
 			flexible({
 				direction: LayoutDirection.Horizontal,
 				content: [
-					label({ text: "Click a load to add it.", width: "1w" }),
+					label({ text: t("Click a load to add it."), width: "1w" }),
 					colouredButton({
-						text: "Close",
+						text: t("Close"),
 						width: 70,
 						height: 22,
 						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,

@@ -1,3 +1,4 @@
+import { t } from "../localization";
 ﻿import { Colour, tab, tabwindow } from "openrct2-flexui";
 import { toggleSpecialColourSchemes } from "../startup";
 import { setMainWindowHandle, setMainWindowColours, setMainWindowSize } from "./windowState";
@@ -62,7 +63,7 @@ function getFireworksWindow()
 	}
 
 	fireworksWindow = tabwindow({
-		title: "Fireworks - Editor",
+		title: t("Fireworks - Editor"),
 		width: 640,
 		height: { value: 440, min: 440, max: 700 },
 		colours: [Colour.DarkBlue, Colour.OliveDark],

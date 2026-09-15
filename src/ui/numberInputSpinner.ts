@@ -1,3 +1,4 @@
+import { t } from "../localization";
 import { flexible, label, LayoutDirection, read, spinner, store, twoway } from "openrct2-flexui";
 import type { Bindable } from "openrct2-flexui";
 
@@ -33,7 +34,7 @@ export function openNumberInputWindow(
 
 	const minVal = minimum !== undefined ? (read(minimum) ?? -2147483648) : -2147483648;
 	const maxVal = maximum !== undefined ? (read(maximum) ?? 2147483647) : 2147483647;
-	const titleText = labelText.trim() ? labelText : "Value";
+	const titleText = labelText.trim() ? labelText : t("Value");
 	const stepText = `${step}`;
 	const decimalPointIndex = stepText.indexOf(".");
 	const precision = decimalPointIndex >= 0 ? stepText.length - decimalPointIndex - 1 : 0;

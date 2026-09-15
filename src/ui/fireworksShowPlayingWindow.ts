@@ -1,3 +1,4 @@
+import { t } from "../localization";
 import {
     compute, flexible, label, listview, OpenWindow, store, tabwindow, Colour, tab,
     LayoutDirection
@@ -55,7 +56,7 @@ function getPlayingWindowDef(): { open(model: void): unknown } {
 
 
     playingWindowDef = tabwindow({
-        title: "Fireworks - Playing Show Programme",
+        title: t("Fireworks - Playing Show Programme"),
         width: 310,
         height: 200,
         padding: 10,
@@ -76,8 +77,8 @@ function getPlayingWindowDef(): { open(model: void): unknown } {
                     listview({
                         items: compute(statusRevision, () => getScheduledShowsStatus().map(s => ["{WHITE}"+s.name, "{WHITE}"+s.status])),
                         columns: [
-                            { header: "{WHITE}Show", width: "1w" },
-                            { header: "{WHITE}Next", width: 90 }
+                            { header: t("{WHITE}Show"), width: "1w" },
+                            { header: t("{WHITE}Next"), width: 90 }
                         ],
                         width: "1w",
                         height: 70,
@@ -88,7 +89,7 @@ function getPlayingWindowDef(): { open(model: void): unknown } {
                         content: [
                             label({ text: "", width: "1w" }),
                             colouredButton({
-                                text: "Stop and return to editor",
+                                text: t("Stop and return to editor"),
                                 width: 200,
                                 height: 38,
                                 colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,

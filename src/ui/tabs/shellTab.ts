@@ -1,3 +1,4 @@
+import { t } from "../../localization";
 import {    box,    checkbox,    colourPicker,    compute,    dropdown,    flexible,    groupbox,    label,    LayoutDirection,    listview,    store,    textbox,    OpenWindow,    Colour} from "openrct2-flexui";
 import { numberInputSpinner } from "../numberInputSpinner";
 import { ShellColours } from "../../fireworks/structures/ColourStructures";
@@ -318,13 +319,13 @@ function loadSelectedShell(index: number): void {
 function validateShellEditor(): boolean {
     if (!selectedLoadName.get().trim()) {
         if (typeof ui !== "undefined" && typeof ui.showError === "function")
-            ui.showError("Invalid shell", "A shell must have a selected load.");
+            ui.showError(t("Invalid shell"), t("A shell must have a selected load."));
         return false;
     }
 
     if (!selectedLaunchSiteName.get().trim()) {
         if (typeof ui !== "undefined" && typeof ui.showError === "function")
-            ui.showError("Invalid shell", "A shell must have a selected launch site.");
+            ui.showError(t("Invalid shell"), t("A shell must have a selected launch site."));
         return false;
     }
 
@@ -332,7 +333,7 @@ function validateShellEditor(): boolean {
     const invalidAscendEffect = ascendEffectsStore.get().find((e: ShellLoad) => e.timeTillExplode > currentDelay);
     if (invalidAscendEffect) {
         if (typeof ui !== "undefined" && typeof ui.showError === "function")
-            ui.showError("Invalid shell", `Ascend load "${invalidAscendEffect.loadName}" fires at delay ${invalidAscendEffect.timeTillExplode}, which exceeds the shell delay of ${currentDelay}.`);
+            ui.showError(t("Invalid shell"), `Ascend load "${invalidAscendEffect.loadName}" fires at delay ${invalidAscendEffect.timeTillExplode}, which exceeds the shell delay of ${currentDelay}.`);
         return false;
     }
 
@@ -348,7 +349,7 @@ function addOrUpdateShell(): void {
 
     if (!persistent.resolveLoad(loadName)) {
         if (typeof ui !== "undefined" && typeof ui.showError === "function") {
-            ui.showError("Invalid shell", "Selected load no longer exists.");
+            ui.showError(t("Invalid shell"), t("Selected load no longer exists."));
         }
         return;
     }
@@ -435,7 +436,7 @@ function onTestShellsButtonClick(): void {
     const issues: ValidationIssue[] = [];
     if (!shell.isValid(ctx, issues, `Shell "${shell.name}"`)) {
         if (typeof ui !== "undefined" && typeof ui.showError === "function") {
-            ui.showError("Invalid shell", formatValidationIssues(issues));
+            ui.showError(t("Invalid shell"), formatValidationIssues(issues));
         }
         return;
     }
@@ -486,14 +487,14 @@ function openAddAscendEffectWindow(): void {
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
     handle = openPopupWindow("shell-add-ascend-load", {
-        title: "Add Ascend Load to Shell",
+        title: t("Add Ascend Load to Shell"),
         width: 300,
         height: 266,
         padding: 8,
         position,
         direction: LayoutDirection.Vertical,
         content: [
-            label({ text: "Search by prefix" }),
+            label({ text: t("Search by prefix") }),
             flexible({
                 direction: LayoutDirection.Horizontal,
                 content: [
@@ -508,8 +509,8 @@ function openAddAscendEffectWindow(): void {
             }),
             listview({
                 items: compute(filteredLoads, loads => loads.map(load => [load.name, load.GetSpriteString()])),
-                columns: [{ header: "Load", width: "1w" },
-                { header: "Icons", width: "1w" }],
+                columns: [{ header: t("Load"), width: "1w" },
+                { header: t("Icons"), width: "1w" }],
                 width: 260,
                 height: 130,
                 canSelect: true,
@@ -520,9 +521,9 @@ function openAddAscendEffectWindow(): void {
                     }
                 }
             }),
-            label({ text: compute(selectedAscendLoad, l => l ? `Selected: ${l.name}` : "Selected: none") }),
+            label({ text: compute(selectedAscendLoad, l => l ? `Selected: ${l.name}` : t("Selected: none")) }),
             numberInputSpinner({
-                labelText: "Delay",
+                labelText: t("Delay"),
                 labelWidth: 50,
                 valueStore: ascendDelay,
                 onChange: value => ascendDelay.set(value),
@@ -537,7 +538,7 @@ function openAddAscendEffectWindow(): void {
                 content: [
                     label({ text: "", width: "1w" }),
                     colouredButton({
-                        text: "Cancel",
+                        text: t("Cancel"),
                         width: 70,
                         height: 22,
                         colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
@@ -545,7 +546,7 @@ function openAddAscendEffectWindow(): void {
                     }),
                     label({ text: "", width: "1w" }),
                     colouredButton({
-                        text: "{WHITE}Add",
+                        text: t("{WHITE}Add"),
                         width: 70,
                         height: 22,
                         colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
@@ -594,14 +595,14 @@ function openShellLoadSelectionWindow(onSelect: (load: Load) => void): void {
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
     handle = openPopupWindow("shell-select-load", {
-        title: "Select Load For Shell",
+        title: t("Select Load For Shell"),
         width: 300,
         height: 250,
         padding: 8,
         position,
         direction: LayoutDirection.Vertical,
         content: [
-            label({ text: "Search by prefix" }),
+            label({ text: t("Search by prefix") }),
             flexible({
                 direction: LayoutDirection.Horizontal,
                 content: [
@@ -616,8 +617,8 @@ function openShellLoadSelectionWindow(onSelect: (load: Load) => void): void {
             }),
             listview({
                 items: compute(filteredLoads, loads => loads.map(load => [load.name, load.GetSpriteString()])),
-                columns: [{ header: "Name", width: "1w" },
-                { header: "Icons", width: "1w" }
+                columns: [{ header: t("Name"), width: "1w" },
+                { header: t("Icons"), width: "1w" }
                 ],
                 width: 260,
                 height: 150,
@@ -633,7 +634,7 @@ function openShellLoadSelectionWindow(onSelect: (load: Load) => void): void {
                 }
             }),
             colouredButton({
-                text: "Close",
+                text: t("Close"),
                 width: 70,
                 height: 22,
                 colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
@@ -664,7 +665,7 @@ export function createShellsTab() {
 
     return [
         groupbox({
-            text: "Shell Editor",
+            text: t("Shell Editor"),
             content: [
                 flexible({
                     direction: LayoutDirection.Horizontal,
@@ -673,12 +674,12 @@ export function createShellsTab() {
                             width: 390,
                             height: compute(showAscendEffectsPanel, show => show ? 455 : 315),
                             padding: 6,
-                            text: "Current Shell",
+                            text: t("Current Shell"),
                             content: flexible({
                                 direction: LayoutDirection.Vertical,
                                 height: compute(showAscendEffectsPanel, show => show ? 425 : 295),
                                 content: [
-                                    label({ text: "Name" }),
+                                    label({ text: t("Name") }),
                                     textbox({
                                         text: editedShellName,
                                         onChange: value => {
@@ -691,9 +692,9 @@ export function createShellsTab() {
                                     flexible({
                                         direction: LayoutDirection.Horizontal,
                                         content: [
-                                            label({ text: compute(selectedLoadName, name => `Main Load: ${name.trim() + "   " + (persistent.GetLoadByName(name)?.GetSpriteString() || "[Empty]")}`), width: "1w" }),
+                                            label({ text: compute(selectedLoadName, name => `Main Load: ${name.trim() + "   " + (persistent.GetLoadByName(name)?.GetSpriteString() || t("[Empty]"))}`), width: "1w" }),
                                             colouredButton({
-                                                text: "Select Main Load",
+                                                text: t("Select Main Load"),
                                                 width: 120,
                                                 height: 20,                                                
                                                 colour: Colour.LightBrown, colourDark: Colour.SaturatedBrown, colourLight: Colour.SaturatedBrownLight,
@@ -705,7 +706,7 @@ export function createShellsTab() {
                                         ]
                                     }),
                                     colouredButton({
-                                        text: "Add Ascend Loads",
+                                        text: t("Add Ascend Loads"),
                                         width: 120,
                                         height: 20,
                                         colour: Colour.LightBrown, colourDark: Colour.SaturatedBrown, colourLight: Colour.SaturatedBrownLight,
@@ -713,7 +714,7 @@ export function createShellsTab() {
                                         onClick: () => expandAcsendEffectsPanel()
                                     }),
                                     groupbox({
-                                        text: "Ascend Loads",
+                                        text: t("Ascend Loads"),
                                         visibility: compute(showAscendEffectsPanel, show => show ? "visible" : "none"),
                                         height: compute(showAscendEffectsPanel, show => show ? 155 : 0),
                                         content: [
@@ -721,7 +722,7 @@ export function createShellsTab() {
                                                 direction: LayoutDirection.Horizontal,
                                                 content: [
                                                     colouredButton({
-                                                        text: "Hide",
+                                                        text: t("Hide"),
                                                         width: 50,
                                                         height: 18,
                                                         colour: Colour.LightBrown, colourDark: Colour.SaturatedBrown, colourLight: Colour.SaturatedBrownLight,
@@ -733,8 +734,8 @@ export function createShellsTab() {
                                             listview({
                                                 items: compute(ascendEffectsRevision, () => ascendEffectsStore.get().map(e => [e.loadName, `${e.timeTillExplode}`])),
                                                 columns: [
-                                                    { header: "Load", width: "2w" },
-                                                    { header: "Delay", width: "1w" }
+                                                    { header: t("Load"), width: "2w" },
+                                                    { header: t("Delay"), width: "1w" }
                                                 ],
                                                 width: 240,
                                                 height: 90,
@@ -747,7 +748,7 @@ export function createShellsTab() {
                                                 direction: LayoutDirection.Horizontal,
                                                 content: [
                                                     colouredButton({
-                                                        text: "{WHITE}Add",
+                                                        text: t("{WHITE}Add"),
                                                         width: 70,
                                                         height: 20,
                                                         colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
@@ -757,7 +758,7 @@ export function createShellsTab() {
                                                             const currentDelay = delay.get();
                                                             if (effects.length > 0 && effects[effects.length - 1].timeTillExplode >= currentDelay) {
                                                                 if (typeof ui !== "undefined" && typeof ui.showError === "function") {
-                                                                    ui.showError("Invalid ascend load", `The last ascend load already fires at delay ${effects[effects.length - 1].timeTillExplode}, which is at or beyond the shell delay of ${currentDelay}.`);
+                                                                    ui.showError(t("Invalid ascend load"), `The last ascend load already fires at delay ${effects[effects.length - 1].timeTillExplode}, which is at or beyond the shell delay of ${currentDelay}.`);
                                                                 }
                                                                 return;
                                                             }
@@ -765,7 +766,7 @@ export function createShellsTab() {
                                                         }
                                                     }),
                                                     colouredButton({
-                                                        text: "{WHITE}Delete",
+                                                        text: t("{WHITE}Delete"),
                                                         width: 70,
                                                         height: 20,
                                                         colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
@@ -776,11 +777,11 @@ export function createShellsTab() {
                                             })
                                         ]
                                     }),
-                                    label({ text: "Launch Site" }),
+                                    label({ text: t("Launch Site") }),
                                     dropdown({
                                         items: compute(launchSitesRevision, () => {
                                             const names = launchSites.map(site => site.name);
-                                            return ["[None]", ...names];
+                                            return [t("[None]"), ...names];
                                         }),
                                         selectedIndex: compute(launchSitesRevision, selectedLaunchSiteName, () => {
                                             const names = launchSites.map(site => site.name);
@@ -801,11 +802,11 @@ export function createShellsTab() {
                                         },
                                         autoDisable: "never"
                                     }),
-                                    label({ text: "Colours" }),
+                                    label({ text: t("Colours") }),
                                     flexible({
                                         direction: LayoutDirection.Horizontal,
                                         content: [
-                                            label({ text: "Head", width: 40 }),
+                                            label({ text: t("Head"), width: 40 }),
                                             colourPicker({
                                                 colour: headColour,
                                                 width: 21,
@@ -815,7 +816,7 @@ export function createShellsTab() {
                                                     syncShellToEditFromEditor();
                                                 }
                                             }),
-                                            label({ text: "Trail 1", width: 45 }),
+                                            label({ text: t("Trail 1"), width: 45 }),
                                             colourPicker({
                                                 colour: trail1Colour,
                                                 width: 21,
@@ -825,7 +826,7 @@ export function createShellsTab() {
                                                     syncShellToEditFromEditor();
                                                 }
                                             }),
-                                            label({ text: "Trail 2", width: 45 }),
+                                            label({ text: t("Trail 2"), width: 45 }),
                                             colourPicker({
                                                 colour: trail2Colour,
                                                 width: 21,
@@ -841,7 +842,7 @@ export function createShellsTab() {
                                         direction: LayoutDirection.Horizontal,
                                         content: [
                                             checkbox({
-                                                text: "Big head type",
+                                                text: t("Big head type"),
                                                 isChecked: isBigHead,
                                                 width: 120,
                                                 onChange: value => {
@@ -850,7 +851,7 @@ export function createShellsTab() {
                                                 }
                                             }),
                                              checkbox({
-                                                text: "Trail",
+                                                text: t("Trail"),
                                                 isChecked: trail,
                                                 width: 80,
                                                 onChange: value => {
@@ -864,7 +865,7 @@ export function createShellsTab() {
                                         direction: LayoutDirection.Horizontal,
                                         content: [
                                             numberInputSpinner({
-                                                labelText: "Trail Density",
+                                                labelText: t("Trail Density"),
                                                 labelWidth: 80,
                                                 valueStore: trailDensity,
                                                 onChange: value => {
@@ -877,7 +878,7 @@ export function createShellsTab() {
                                                 maximum: 1
                                             }),
                                             numberInputSpinner({
-                                                labelText: "Trail Width",
+                                                labelText: t("Trail Width"),
                                                 labelWidth: 80,
                                                 valueStore: trailWidth,
                                                 onChange: value => {
@@ -895,7 +896,7 @@ export function createShellsTab() {
                                         direction: LayoutDirection.Horizontal,
                                         content: [
                                             numberInputSpinner({
-                                                labelText: "Tilt",
+                                                labelText: t("Tilt"),
                                                 labelWidth: 80,
                                                 valueStore: tilt,
                                                 onChange: value => {
@@ -908,7 +909,7 @@ export function createShellsTab() {
                                                 maximum: 45
                                             }),
                                             numberInputSpinner({
-                                                labelText: "Azimuth",
+                                                labelText: t("Azimuth"),
                                                 labelWidth: 80,
                                                 valueStore: azimuth,
                                                 onChange: value => {
@@ -926,7 +927,7 @@ export function createShellsTab() {
                                         direction: LayoutDirection.Horizontal,
                                         content: [
                                             numberInputSpinner({
-                                                labelText: "Height",
+                                                labelText: t("Height"),
                                                 labelWidth: 80,
                                                 valueStore: timeTillStall,
                                                 onChange: value => setHeightValue(value),
@@ -936,7 +937,7 @@ export function createShellsTab() {
                                                 maximum: 130
                                             }),
                                             numberInputSpinner({
-                                                labelText: "Delay",
+                                                labelText: t("Delay"),
                                                 labelWidth: 80,
                                                 valueStore: delay,
                                                 onChange: value => setDelayValue(value),
@@ -946,7 +947,7 @@ export function createShellsTab() {
                                                 maximum: 130
                                             }),
                                             checkbox({
-                                                text: "Sync",
+                                                text: t("Sync"),
                                                 isChecked: syncHeightAndDelay,
                                                 onChange: value => {
                                                     syncHeightAndDelay.set(value);
@@ -962,7 +963,7 @@ export function createShellsTab() {
                                         direction: LayoutDirection.Horizontal,
                                         content: [
                                             numberInputSpinner({
-                                                labelText: "Randomness",
+                                                labelText: t("Randomness"),
                                                 labelWidth: 80,
                                                 valueStore: randomness,
                                                 onChange: value => {
@@ -979,7 +980,7 @@ export function createShellsTab() {
                                     flexible({
                                         direction: LayoutDirection.Horizontal,
                                         content: [
-                                            label({ text: "Preset", width: 80 }),
+                                            label({ text: t("Preset"), width: 80 }),
                                             ...shellSizePresets.map(preset => colouredButton({
                                                 text: preset.label,
                                                 width: 28,
@@ -989,7 +990,7 @@ export function createShellsTab() {
                                             })),
 											label({ text: "", width: "1w" }),
                                             colouredButton({
-                                                text: "{WHITE}Test Shell",
+                                                text: t("{WHITE}Test Shell"),
                                                 width: 80,
                                                 height: 20,
 												colour: Colour.LightOrange, colourDark: Colour.DarkOrange, colourLight: Colour.OrangeLight,
@@ -1001,21 +1002,21 @@ export function createShellsTab() {
                                         direction: LayoutDirection.Horizontal,
                                         content: [
                                             colouredButton({
-                                                text: "{WHITE}Add Shell",
+                                                text: t("{WHITE}Add Shell"),
                                                 width: 100,
                                                 height: 20,
                                                 colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
                                                 onClick: addOrUpdateShell
                                             }),
                                             colouredButton({
-                                                text: "{WHITE}New",
+                                                text: t("{WHITE}New"),
                                                 width: 50,
                                                 height: 20,
                                                 colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
                                                 onClick: () => confirmDiscardChanges(isShellEditorDirty, resetShellEditor)
                                             }),
                                             colouredButton({
-                                                text: "{WHITE}Delete Shell",
+                                                text: t("{WHITE}Delete Shell"),
                                                 width: 90,
                                                 height: 20,
                                                 colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
@@ -1023,7 +1024,7 @@ export function createShellsTab() {
                                             }),
                                             label({ text: "", width: "1w" }),
                                             colouredButton({
-                                                text: "{BLACK}Debugger", width: 70, height: 20,
+                                                text: t("{BLACK}Debugger"), width: 70, height: 20,
                                                 colour: Colour.Yellow, colourDark: Colour.DarkYellow, colourLight: Colour.BrightYellow,
                                                 onClick: openDebuggerWindow
                                             }),
@@ -1036,7 +1037,7 @@ export function createShellsTab() {
                             width: 190,
                             height: "1w",
                             padding: 6,
-                            text: "Defined Shells",
+                            text: t("Defined Shells"),
                             content: flexible({
                                 direction: LayoutDirection.Vertical,
                                 content: [
@@ -1048,8 +1049,8 @@ export function createShellsTab() {
                                     }),
                                     listview({
                                         items: compute(filteredShells, shells => shells.map(shell => [shell.name, shell.GetSpriteString()])),
-                                        columns: [{ header: "Name", width: "1w" },
-                                        { header: "Icons", width: "1w" }
+                                        columns: [{ header: t("Name"), width: "1w" },
+                                        { header: t("Icons"), width: "1w" }
                                         ],
                                         width: 170,
                                         height: "1w",

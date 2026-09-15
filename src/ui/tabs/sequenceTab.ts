@@ -1,3 +1,4 @@
+import { t } from "../../localization";
 import { store, compute, OpenWindow, LayoutDirection, label, textbox, listview, flexible, dropdown, groupbox, box, Colour } from "openrct2-flexui";
 import { LoadFireworks, Play, Stop, flattenScheduledEntryToShots } from "../../fireworks/fireworksEffectsPlayer";
 import { ResetCounts } from "../../fireworks/particleSpawner";
@@ -31,7 +32,7 @@ const DEFAULT_SEQUENCE_EDITOR = {
     entryEditTimeText: "",
     entryEditDelayText: "",
     entryEditIndexText: "",
-    entryEditItemLabel: "[Empty]",
+    entryEditItemLabel: t("[Empty]"),
     entryEditItemName: undefined as string | undefined,
     entryEditItemType: undefined as SequenceItemType | undefined,
     entryEditNextItemAfterEnd: true,
@@ -295,7 +296,7 @@ function showError(title: string, message: string): void {
 
 function insertWithLock(insertIndex: number, delay: number): void {
     if (!entryEditItemName || !entryEditItemType) {
-        showError("Invalid entry", "Select a shell, ground effect, or sequence before adding.");
+        showError(t("Invalid entry"), t("Select a shell, ground effect, or sequence before adding."));
         return;
     }
     const seq = getEditSequence()!;
@@ -366,13 +367,13 @@ function insertWithLock(insertIndex: number, delay: number): void {
 
 function onAddAt(): void {
     if (!entryEditItemName || !entryEditItemType) {
-        showError("Invalid entry", "Select a shell, ground effect, or sequence before adding.");
+        showError(t("Invalid entry"), t("Select a shell, ground effect, or sequence before adding."));
         return;
     }
     const timeStr = entryEditTimeText.get().trim();
     const absoluteTime = parseTimeString(timeStr);
     if (absoluteTime === undefined) {
-        showError("Invalid time", `"${timeStr}" is not a valid time. Examples: 2s, 80t, 1m30s, 01m30s10t`);
+        showError(t("Invalid time"), `"${timeStr}" is not a valid time. Examples: 2s, 80t, 1m30s, 01m30s10t`);
         return;
     }
 
@@ -405,13 +406,13 @@ function onAddAt(): void {
 
 function onAddAfterIndex(): void {
     if (!entryEditItemName || !entryEditItemType) {
-        showError("Invalid entry", "Select a shell, ground effect, or sequence before adding.");
+        showError(t("Invalid entry"), t("Select a shell, ground effect, or sequence before adding."));
         return;
     }
     const delayStr = entryEditDelayText.get().trim();
     const delay = parseTimeString(delayStr || "0");
     if (delay === undefined) {
-        showError("Invalid delay", `"${delayStr}" is not a valid delay. Examples: 2s, 80t, 1m30s`);
+        showError(t("Invalid delay"), `"${delayStr}" is not a valid delay. Examples: 2s, 80t, 1m30s`);
         return;
     }
     const indexStr = entryEditIndexText.get().trim();
@@ -467,7 +468,7 @@ function onDeleteEntryClick(row: number): void {
 
 function validateSequenceEditor(): boolean {
     if (getEditSequence()!.items.length === 0) {
-        showError("Invalid sequence", "A sequence must have at least one item.");
+        showError(t("Invalid sequence"), t("A sequence must have at least one item."));
         return false;
     }
     return true;
@@ -548,7 +549,7 @@ function openConfirmDeleteWindow(itemLabel: string, onConfirm: () => void): void
         : "center" as const;
 
     handle = openPopupWindow("sequence-delete-confirm", {
-        title: "Delete Sequence",
+        title: t("Delete Sequence"),
         width: 300,
         height: 90,
         padding: 8,
@@ -565,7 +566,7 @@ function openConfirmDeleteWindow(itemLabel: string, onConfirm: () => void): void
                         content: [
                             label({ text: "", width: "1w" }),
                             colouredButton({
-                                text: "{WHITE}Yes",
+                                text: t("{WHITE}Yes"),
                                 width: 80,
                                 height: 22,
                                 colour: Colour.SaturatedRed,
@@ -578,7 +579,7 @@ function openConfirmDeleteWindow(itemLabel: string, onConfirm: () => void): void
                             }),
                             label({ text: "", width: "1w" }),
                             colouredButton({
-                                text: "Cancel",
+                                text: t("Cancel"),
                                 width: 80,
                                 height: 22,
                                 colour: Colour.Grey,
@@ -607,16 +608,16 @@ function onPlayFromIndexClick(requestedStartRow?: number): void {
     const ctx = buildValidationContext();
     const issues: ValidationIssue[] = [];
     if (!seq.isValid(ctx, issues, `Sequence "${seq.name}"`)) {
-        showError("Invalid sequence", formatValidationIssues(issues));
+        showError(t("Invalid sequence"), formatValidationIssues(issues));
         return;
     }
 
     if (startRow === undefined) {
-        showError("Invalid selection", "Select a row in the sequence list to play from.");
+        showError(t("Invalid selection"), t("Select a row in the sequence list to play from."));
         return;
     }
     if (seq.items.length === 0 || startRow >= seq.items.length) {
-        showError("Invalid selection", "The selected row is out of range.");
+        showError(t("Invalid selection"), t("The selected row is out of range."));
         return;
     }
 
@@ -691,14 +692,14 @@ function openShellPickerWindow(onSelect: (shell: Shell) => void): void {
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
     handle = openPopupWindow("sequence-select-shell", {
-        title: "Select Shell for Sequence",
+        title: t("Select Shell for Sequence"),
         width: 300,
         height: 250,
         padding: 8,
         position,
         direction: LayoutDirection.Vertical,
         content: [
-            label({ text: "Search by prefix" }),
+            label({ text: t("Search by prefix") }),
             flexible({
                 direction: LayoutDirection.Horizontal,
                 content: [
@@ -708,8 +709,8 @@ function openShellPickerWindow(onSelect: (shell: Shell) => void): void {
             }),
             listview({
                 items: compute(filteredShells, shells => shells.map(s => [s.name, s.GetSpriteString()])),
-                columns: [{ header: "Name", width: "1w" },
-                { header: "Icons", width: "1w" }
+                columns: [{ header: t("Name"), width: "1w" },
+                { header: t("Icons"), width: "1w" }
                 ],
                 width: 260,
                 height: 150,
@@ -721,7 +722,7 @@ function openShellPickerWindow(onSelect: (shell: Shell) => void): void {
                     handle?.close();
                 }
             }),
-            colouredButton({ text: "Close", width: 70, height: 22, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: () => handle?.close() })
+            colouredButton({ text: t("Close"), width: 70, height: 22, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: () => handle?.close() })
         ]
     }, SEQUENCE_PICKER_GROUP);
 }
@@ -743,14 +744,14 @@ function openGroundEffectPickerWindow(onSelect: (ge: GroundEffect) => void): voi
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
     handle = openPopupWindow("sequence-select-ground-effect", {
-        title: "Select Ground Effect for Sequence",
+        title: t("Select Ground Effect for Sequence"),
         width: 300,
         height: 250,
         padding: 8,
         position,
         direction: LayoutDirection.Vertical,
         content: [
-            label({ text: "Search by prefix" }),
+            label({ text: t("Search by prefix") }),
             flexible({
                 direction: LayoutDirection.Horizontal,
                 content: [
@@ -760,8 +761,8 @@ function openGroundEffectPickerWindow(onSelect: (ge: GroundEffect) => void): voi
             }),
             listview({
                 items: compute(filteredEffects, effects => effects.map(ge => [ge.name, ge.GetSpriteString()])),
-                columns: [{ header: "Name", width: "1w" },
-                { header: "Icons", width: "1w" }
+                columns: [{ header: t("Name"), width: "1w" },
+                { header: t("Icons"), width: "1w" }
                 ],
                 width: 260,
                 height: 150,
@@ -773,7 +774,7 @@ function openGroundEffectPickerWindow(onSelect: (ge: GroundEffect) => void): voi
                     handle?.close();
                 }
             }),
-            colouredButton({ text: "Close", width: 70, height: 22, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: () => handle?.close() })
+            colouredButton({ text: t("Close"), width: 70, height: 22, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: () => handle?.close() })
         ]
     }, SEQUENCE_PICKER_GROUP);
 }
@@ -782,7 +783,7 @@ function openSequencePickerWindow(onSelect: (seqName: string, nextItemAfterEnd: 
     const search = store("");
     const newestFirst = createSortOrderStore();
     const nextItemAfterEndIndex = store(1); // 0 = Start of sequence, 1 = End of sequence
-    const nextAfterOptions = ["Start of sequence", "End of sequence"];
+    const nextAfterOptions = [t("Start of sequence"), t("End of sequence")];
     const selectedIndex = store<number | undefined>(undefined);
     const filteredSequences = compute(search, newestFirst, (query, reversed) => {
         const q = query.trim().toLowerCase();
@@ -800,14 +801,14 @@ function openSequencePickerWindow(onSelect: (seqName: string, nextItemAfterEnd: 
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
     handle = openPopupWindow("sequence-select-sequence", {
-        title: "Select Sequence For Sequence",
+        title: t("Select Sequence For Sequence"),
         width: 320,
         height: 270,
         padding: 8,
         position,
         direction: LayoutDirection.Vertical,
         content: [
-            label({ text: "Search by prefix" }),
+            label({ text: t("Search by prefix") }),
             flexible({
                 direction: LayoutDirection.Horizontal,
                 content: [
@@ -818,8 +819,8 @@ function openSequencePickerWindow(onSelect: (seqName: string, nextItemAfterEnd: 
             listview({
                 items: compute(filteredSequences, seqs => seqs.map(s => [s.name, `${s.items.length}`])),
                 columns: [
-                    { header: "Name", width: "2w" },
-                    { header: "Items", width: "1w" }
+                    { header: t("Name"), width: "2w" },
+                    { header: t("Items"), width: "1w" }
                 ],
                 width: 292,
                 height: 150,
@@ -835,7 +836,7 @@ function openSequencePickerWindow(onSelect: (seqName: string, nextItemAfterEnd: 
                 direction: LayoutDirection.Horizontal,
                 height: 16,
                 content: [
-                    label({ text: "Fire next item after:", width: "1w" }),
+                    label({ text: t("Fire next item after:"), width: "1w" }),
                     dropdown({
                         items: nextAfterOptions,
                         selectedIndex: nextItemAfterEndIndex,
@@ -848,10 +849,10 @@ function openSequencePickerWindow(onSelect: (seqName: string, nextItemAfterEnd: 
             flexible({
                 direction: LayoutDirection.Horizontal,
                 content: [label({ text: "", width: "1w" }),
-                    colouredButton({ text: "Close", width: 70, height: 22, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: () => handle?.close() }),
+                    colouredButton({ text: t("Close"), width: 70, height: 22, colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: () => handle?.close() }),
                     label({ text: "", width: "1w" }),
                     colouredButton({
-                        text: "{WHITE}Select", width: 70, height: 22,
+                        text: t("{WHITE}Select"), width: 70, height: 22,
                         colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
                         disabled: compute(selectedIndex, idx => idx === undefined),
                         onClick: () => {
@@ -910,7 +911,7 @@ const addAfterButtonLabel = compute(
         const trimmedIndex = indexText.trim();
         const parsedIndex = trimmedIndex ? parseInt(trimmedIndex, 10) : NaN;
         const indexIsValid = isFinite(parsedIndex) && parsedIndex >= 1 && parsedIndex <= items.length;
-        return `Add ${delayDisplay} after ${indexIsValid ? String(parsedIndex) : "last"}`;
+        return `Add ${delayDisplay} after ${indexIsValid ? String(parsedIndex) : t("last")}`;
     }
 );
 
@@ -962,9 +963,9 @@ export function createSequenceTab() {
                                                     flexible({
                                                         direction: LayoutDirection.Horizontal,
                                                         content: [
-                                                            label({ text: compute(textColour, lockOnTime, (c, lock) => `${c}Time${lock ? " [L]" : ""}`), width: 80 }),
+                                                            label({ text: compute(textColour, lockOnTime, (c, lock) => `${c}Time${lock ? t(" [L]") : ""}`), width: 80 }),
                                                             label({ text: "", width: 25 }),
-                                                            label({ text: compute(textColour, lockOnTime, (c, lock) => `${c}Delay${!lock ? " [L]" : ""}`), width: 70 }),
+                                                            label({ text: compute(textColour, lockOnTime, (c, lock) => `${c}Delay${!lock ? t(" [L]") : ""}`), width: 70 }),
                                                             label({ text: compute(textColour, c => `${c}Index`), width: 35 }),
                                                             label({ text: "", width: 100 }),
                                                             label({ text: compute(textColour, c => `${c}Item`), width: 35 }),
@@ -1036,7 +1037,7 @@ export function createSequenceTab() {
                                                         colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
                                                         disabled: isPlaying,
                                                         onClick: () => openShellPickerWindow(s => {
-                                                            const name = s.name.trim() || "[Unnamed]";
+                                                            const name = s.name.trim() || t("[Unnamed]");
                                                             entryEditItemName = s.name.trim();
                                                             entryEditItemType = SequenceItemType.Shell;
                                                             entryEditNextItemAfterEnd = true;
@@ -1050,7 +1051,7 @@ export function createSequenceTab() {
                                                         colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
                                                         disabled: isPlaying,
                                                         onClick: () => openGroundEffectPickerWindow(ge => {
-                                                            const name = ge.name.trim() || "[Unnamed]";
+                                                            const name = ge.name.trim() || t("[Unnamed]");
                                                             entryEditItemName = ge.name.trim();
                                                             entryEditItemType = SequenceItemType.GroundEffect;
                                                             entryEditNextItemAfterEnd = true;
@@ -1064,7 +1065,7 @@ export function createSequenceTab() {
                                                         colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
                                                         disabled: isPlaying,
                                                         onClick: () => openSequencePickerWindow((seqName, nextAfterEnd) => {
-                                                            const name = seqName || "[Unnamed]";
+                                                            const name = seqName || t("[Unnamed]");
                                                             entryEditItemName = seqName;
                                                             entryEditItemType = SequenceItemType.Sequence;
                                                             entryEditNextItemAfterEnd = nextAfterEnd;
@@ -1103,7 +1104,7 @@ export function createSequenceTab() {
                                                 content: [
                                                     label({ text: compute(textColour, c => `${c}Lock:`), width: 38 }),
                                                     colouredButton({
-                                                        text: compute(lockOnTime, textColour, (lock, c) => lock ? `{TOPAZ}Time` : `${c}Time`),
+                                                        text: compute(lockOnTime, textColour, (lock, c) => lock ? t("{TOPAZ}Time") : `${c}Time`),
                                                         width: 72,
                                                         height: 18,
                                                         colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
@@ -1112,7 +1113,7 @@ export function createSequenceTab() {
                                                         onClick: () => lockOnTime.set(true)
                                                     }),
                                                     colouredButton({
-                                                        text: compute(lockOnTime, textColour, (lock, c) => !lock ? `{TOPAZ}Delay` : `${c}Delay`),
+                                                        text: compute(lockOnTime, textColour, (lock, c) => !lock ? t("{TOPAZ}Delay") : `${c}Delay`),
                                                         width: 55,
                                                         height: 18,
                                                         colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
@@ -1141,35 +1142,35 @@ export function createSequenceTab() {
                                                             const color = relTick >= 0 ? (isRowPlaying ? "{BABYBLUE}" : "") : (delMode ? "{RED}" : "{WHITE}");
                                                             const timeColor = color || (lockIsTime ? "{TOPAZ}" : "");
                                                             const delayColor = color || (!lockIsTime ? "{TOPAZ}" : "");
-                                                            const typeLabel = entry.itemType === SequenceItemType.Sequence ? "Seq."
-                                                                : entry.itemType === SequenceItemType.Shell ? "Shell"
-                                                                    : entry.itemType === SequenceItemType.GroundEffect ? "G.E."
-                                                                        : "Unknown";
+                                                            const typeLabel = entry.itemType === SequenceItemType.Sequence ? t("Seq.")
+                                                                : entry.itemType === SequenceItemType.Shell ? t("Shell")
+                                                                    : entry.itemType === SequenceItemType.GroundEffect ? t("G.E.")
+                                                                        : t("Unknown");
                                                             return [
                                                                 isRowPlaying ? ">" : "",
                                                                 `${color}${String(i + 1)}`,
                                                                 `${timeColor}${ticksToShortTimeString(entry.cumulativeTimeTillLight)}`,
                                                                 `${delayColor}${ticksToShortTimeString(entry.timeTillLight)}`,
                                                                 `${color}${(() => { const s = entry.itemType === SequenceItemType.Sequence ? resolveSequence(entry.itemName) : undefined; return s ? ticksToShortTimeString(s.getEndCumulativeTime(resolveSequence)) : "-"; })()}`,
-                                                                `${color}${entry.itemName || "[Unnamed]"}`,
+                                                                `${color}${entry.itemName || t("[Unnamed]")}`,
                                                                 `${color}${entry.GetSpriteString()}`,
                                                                 `${color}${typeLabel}`,
                                                                 `${color}${getLaunchSiteName(entry)}`,
-                                                                `${color}${entry.itemType === SequenceItemType.Sequence ? (entry.nextItemAfterEnd ? "end" : "start") : ""}`
+                                                                `${color}${entry.itemType === SequenceItemType.Sequence ? (entry.nextItemAfterEnd ? t("end") : t("start")) : ""}`
                                                             ];
                                                         });
                                                     }),
                                                 columns: [
                                                     { header: "", width: 14 },
                                                     { header: "{WHITE}#", width: 24 },
-                                                    { header: "{WHITE}Time", width: 72 },
-                                                    { header: "{WHITE}Delay", width: 55 },
-                                                    { header: "{WHITE}Duration", width: 54 },
-                                                    { header: "{WHITE}Name", width: "1w" },
-                                                    { header: "{WHITE}Icons", width: 64 },
-                                                    { header: "{WHITE}Type", width: 38 },
-                                                    { header: "{WHITE}Launch Site", width: 80 },
-                                                    { header: "{WHITE}Next after", width: 72 }
+                                                    { header: t("{WHITE}Time"), width: 72 },
+                                                    { header: t("{WHITE}Delay"), width: 55 },
+                                                    { header: t("{WHITE}Duration"), width: 54 },
+                                                    { header: t("{WHITE}Name"), width: "1w" },
+                                                    { header: t("{WHITE}Icons"), width: 64 },
+                                                    { header: t("{WHITE}Type"), width: 38 },
+                                                    { header: t("{WHITE}Launch Site"), width: 80 },
+                                                    { header: t("{WHITE}Next after"), width: 72 }
                                                 ],
                                                 height: "1w",
                                                 canSelect: true,
@@ -1197,14 +1198,14 @@ export function createSequenceTab() {
                                                             const adjNext = (i < flat.length - 1) ? flat[i + 1].cumulativeTimeTillLight : Infinity;
                                                             const playing = relTick >= 0 && relTick >= adjCum && relTick < adjNext;
                                                             const color = playing ? "{BABYBLUE}" : "{WHITE}";
-                                                            const typeLabel = entry.itemType === SequenceItemType.Shell ? "Shell"
-                                                                : entry.itemType === SequenceItemType.GroundEffect ? "G.E."
-                                                                    : "Unknown";
+                                                            const typeLabel = entry.itemType === SequenceItemType.Shell ? t("Shell")
+                                                                : entry.itemType === SequenceItemType.GroundEffect ? t("G.E.")
+                                                                    : t("Unknown");
                                                             return [
                                                                 playing ? ">" : "",
                                                                 `${color}${String(i + 1)}`,
                                                                 `${color}${ticksToShortTimeString(entry.cumulativeTimeTillLight)}`,
-                                                                `${color}${entry.itemName || "[Unnamed]"}`,
+                                                                `${color}${entry.itemName || t("[Unnamed]")}`,
                                                                 `${color}${entry.GetSpriteString()}`,
                                                                 `${color}${typeLabel}`,
                                                                 `${color}${getLaunchSiteName(entry)}`
@@ -1214,11 +1215,11 @@ export function createSequenceTab() {
                                                 columns: [
                                                     { header: "", width: 14 },
                                                     { header: "{WHITE}#", width: 24 },
-                                                    { header: "{WHITE}Time", width: 72 },
-                                                    { header: "{WHITE}Name", width: "1w" },
-                                                    { header: "{WHITE}Icons", width: "1w" },
-                                                    { header: "{WHITE}Type", width: 44 },
-                                                    { header: "{WHITE}Launch Site", width: "1w" }
+                                                    { header: t("{WHITE}Time"), width: 72 },
+                                                    { header: t("{WHITE}Name"), width: "1w" },
+                                                    { header: t("{WHITE}Icons"), width: "1w" },
+                                                    { header: t("{WHITE}Type"), width: 44 },
+                                                    { header: t("{WHITE}Launch Site"), width: "1w" }
                                                 ],
                                                 height: "1w",
                                                 canSelect: true,
@@ -1255,7 +1256,7 @@ export function createSequenceTab() {
                                                         onClick: () => isDeleteMode.set(!isDeleteMode.get())
                                                     }),
                                                     colouredButton({
-                                                        text: compute(isExpandedView, textColour, (expanded, c) => `${c}${expanded ? "{RED}Compact Sub-Sequences" : "Expand Sub-Sequences"}`),
+                                                        text: compute(isExpandedView, textColour, (expanded, c) => `${c}${expanded ? t("{RED}Compact Sub-Sequences") : t("Expand Sub-Sequences")}`),
                                                         width: 140, height: 22,
                                                         colour: Colour.DarkPurple, colourDark: Colour.Black, colourLight: Colour.LightPurple,
                                                         pressed: isExpandedView,
@@ -1276,7 +1277,7 @@ export function createSequenceTab() {
                                                         colour: Colour.LightOrange, colourDark: Colour.DarkOrange, colourLight: Colour.OrangeLight, disabled: isPlaying, onClick: onPlayFromIndexClick
                                                     }),
                                                     colouredButton({
-                                                        text: "{RED}Stop", width: 40, height: 22,
+                                                        text: t("{RED}Stop"), width: 40, height: 22,
                                                         colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White, onClick: onStopClick
                                                     })
                                                 ]
@@ -1301,7 +1302,7 @@ export function createSequenceTab() {
                                                     }),
                                                     label({ text: "", width: "1w" }),
                                                     colouredButton({
-                                                        text: "{BLACK}Debugger", width: 70, height: 22,
+                                                        text: t("{BLACK}Debugger"), width: 70, height: 22,
                                                         colour: Colour.Yellow, colourDark: Colour.DarkYellow, colourLight: Colour.BrightYellow, onClick: openDebuggerWindow
                                                     })
                                                 ]
@@ -1328,7 +1329,7 @@ export function createSequenceTab() {
                                     }),
                                     listview({
                                         items: compute(filteredSequences, seqs => seqs.map(s => ["{WHITE}" + s.name])),
-                                        columns: [{ header: "{WHITE}Name", width: "1w" }],
+                                        columns: [{ header: t("{WHITE}Name"), width: "1w" }],
                                         width: 140,
                                         height: "1w",
                                         canSelect: true,

@@ -1,3 +1,4 @@
+import { isKorean, t } from "../../localization";
 import {
     box, checkbox, compute, dropdown, flexible, groupbox, label, LayoutDirection, listview, store, textbox, OpenWindow, Colour
 } from "openrct2-flexui";
@@ -31,7 +32,7 @@ import { confirmDiscardChanges } from "../discardChangesWindow";
 const FRAMES_PER_DAY = 528;         // ~13.2 s × 40 fps
 const DAYS_PER_MONTH = 31;
 const MONTHS_PER_YEAR = 8;          // March … October (game skips Jan, Feb, Nov, Dec)
-const INGAME_MONTH_NAMES = ["March", "April", "May", "June", "July", "August", "September", "October"];
+const INGAME_MONTH_NAMES = [t("March"), t("April"), t("May"), t("June"), t("July"), t("August"), t("September"), t("October")];
 
 function ordinalSuffix(n: number): string
 {
@@ -50,9 +51,9 @@ function triggerTypeLabel(trigger: ShowTrigger): string
 {
     switch (trigger.kind)
     {
-        case ShowTriggerKind.RealTimeInterval: return "Real-time";
-        case ShowTriggerKind.InGameRecurring:  return "Recurring";
-        case ShowTriggerKind.InGameAnnualDates: return "Annual dates";
+        case ShowTriggerKind.RealTimeInterval: return t("Real-time");
+        case ShowTriggerKind.InGameRecurring:  return t("Recurring");
+        case ShowTriggerKind.InGameAnnualDates: return t("Annual dates");
     }
 }
 
@@ -61,16 +62,20 @@ function triggerDetailsLabel(trigger: ShowTrigger): string
     switch (trigger.kind)
     {
         case ShowTriggerKind.RealTimeInterval:
-            return `Every ${trigger.intervalMinutes} min`;
+            return isKorean() ? `매 ${trigger.intervalMinutes}분` : `Every ${trigger.intervalMinutes} min`;
         case ShowTriggerKind.InGameRecurring:
             if (trigger.period === InGameRecurringPeriod.Daily)
-                return "Every day";
+                return t("Every day");
             if (trigger.period === InGameRecurringPeriod.Monthly)
-                return `${ordinalSuffix(trigger.dayOfMonth ?? 1)} of each month`;
-            return `Every ${INGAME_MONTH_NAMES[trigger.month ?? 0] ?? "?"} ${ordinalSuffix(trigger.dayOfMonth ?? 1)}`;
+                return isKorean() ? `매월 ${trigger.dayOfMonth ?? 1}일` : `${ordinalSuffix(trigger.dayOfMonth ?? 1)} of each month`;
+            return isKorean()
+                ? `매년 ${INGAME_MONTH_NAMES[trigger.month ?? 0] ?? "?"} ${trigger.dayOfMonth ?? 1}일`
+                : `Every ${INGAME_MONTH_NAMES[trigger.month ?? 0] ?? "?"} ${ordinalSuffix(trigger.dayOfMonth ?? 1)}`;
         case ShowTriggerKind.InGameAnnualDates:
-            if (trigger.dates.length === 0) return "(no dates)";
-            return trigger.dates.map(d => `${INGAME_MONTH_NAMES[d.month] ?? "?"} ${d.day}`).join(", ");
+            if (trigger.dates.length === 0) return t("(no dates)");
+            return trigger.dates.map(d => isKorean()
+                ? `${INGAME_MONTH_NAMES[d.month] ?? "?"} ${d.day}일`
+                : `${INGAME_MONTH_NAMES[d.month] ?? "?"} ${d.day}`).join(", ");
     }
 }
 
@@ -379,7 +384,7 @@ function onTestShowClick(): void
     {
         if (typeof ui !== "undefined" && typeof ui.showError === "function")
         {
-            ui.showError("Invalid show", formatValidationIssues(issues));
+            ui.showError(t("Invalid show"), formatValidationIssues(issues));
         }
         return;
     }
@@ -402,14 +407,14 @@ function openSequenceSelectionWindow(): void
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
     handle = openPopupWindow("show-select-sequence", {
-        title: "Select Sequence for Show",
+        title: t("Select Sequence for Show"),
         width: 300,
         height: 250,
         padding: 8,
         position,
         direction: LayoutDirection.Vertical,
         content: [
-            label({ text: "Search by prefix" }),
+            label({ text: t("Search by prefix") }),
             textbox({
                 text: search,
                 onChange: value => search.set(value),
@@ -418,7 +423,7 @@ function openSequenceSelectionWindow(): void
             }),
             listview({
                 items: compute(filteredSequences, seqs => seqs.map(s => [s.name])),
-                columns: [{ header: "Name", width: "1w" }],
+                columns: [{ header: t("Name"), width: "1w" }],
                 width: 260,
                 height: 150,
                 canSelect: true,
@@ -430,7 +435,7 @@ function openSequenceSelectionWindow(): void
                 }
             }),
             colouredButton({
-                text: "Close",
+                text: t("Close"),
                 width: 70,
                 height: 22,
                 colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
@@ -455,14 +460,14 @@ function openLaunchSiteSelectionWindow(): void
     const mainPos = getMainWindowPosition();
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
     handle = openPopupWindow("show-select-location", {
-        title: "Select News Message Position",
+        title: t("Select News Message Position"),
         width: 300,
         height: 260,
         padding: 8,
         position,
         direction: LayoutDirection.Vertical,
         content: [
-            label({ text: "Search by prefix" }),
+            label({ text: t("Search by prefix") }),
             textbox({
                 text: search,
                 onChange: value => search.set(value),
@@ -471,7 +476,7 @@ function openLaunchSiteSelectionWindow(): void
             }),
             listview({
                 items: compute(filteredSites, sites => sites.map(s => [s.name])),
-                columns: [{ header: "Name", width: "1w" }],
+                columns: [{ header: t("Name"), width: "1w" }],
                 width: 260,
                 height: 150,
                 canSelect: true,
@@ -486,7 +491,7 @@ function openLaunchSiteSelectionWindow(): void
                 direction: LayoutDirection.Horizontal,
                 content: [
                     colouredButton({
-                        text: "Clear",
+                        text: t("Clear"),
                         width: 70,
                         height: 22,
                         colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
@@ -496,7 +501,7 @@ function openLaunchSiteSelectionWindow(): void
                         }
                     }),
                     colouredButton({
-                        text: "Close",
+                        text: t("Close"),
                         width: 70,
                         height: 22,
                         colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
@@ -517,8 +522,8 @@ function clearCurrentTrigger(): void
 
 function openAddTriggerWindow(): void
 {
-    const TYPE_LABELS = ["Real-time interval", "In-game recurring", "In-game annual dates"];
-    const PERIOD_LABELS = ["Daily", "Monthly", "Yearly"];
+    const TYPE_LABELS = [t("Real-time interval"), t("In-game recurring"), t("In-game annual dates")];
+    const PERIOD_LABELS = [t("Daily"), t("Monthly"), t("Yearly")];
     const PERIOD_VALUES = [InGameRecurringPeriod.Daily, InGameRecurringPeriod.Monthly, InGameRecurringPeriod.Yearly];
 
     const typeIndex     = store(0);
@@ -604,7 +609,7 @@ function openAddTriggerWindow(): void
     const position = mainPos ? { x: mainPos.x + 20, y: mainPos.y + 20 } : "center" as const;
 
     handle = openPopupWindow("show-set-trigger", {
-        title: "Set Schedule Trigger",
+        title: t("Set Schedule Trigger"),
         width: 340,
         height: 250,
         padding: 8,
@@ -612,7 +617,7 @@ function openAddTriggerWindow(): void
         direction: LayoutDirection.Vertical,
         content: [
             // ---- Type ----
-            label({ text: "Trigger type" }),
+            label({ text: t("Trigger type") }),
             dropdown({
                 items: TYPE_LABELS,
                 selectedIndex: typeIndex,
@@ -623,7 +628,7 @@ function openAddTriggerWindow(): void
 
             // ---- Real-time interval ----
             groupbox({
-                text: "Real-time interval",
+                text: t("Real-time interval"),
                 visibility: isRealTimeVisible,
                 height: compute(typeIndex, t => t === 0 ? 44 : 0),
                 content: [
@@ -631,7 +636,7 @@ function openAddTriggerWindow(): void
                         direction: LayoutDirection.Horizontal,
                         content: [
                             numberInputSpinner({
-                                labelText: "Every",
+                                labelText: t("Every"),
                                 labelWidth: 40,
                                 valueStore: intervalMins,
                                 step: 1,
@@ -641,7 +646,7 @@ function openAddTriggerWindow(): void
                                 visibility: isRealTimeVisible,
                                 onChange: v => { intervalMins.set(v); refreshWarning(); }
                             }),
-                            label({ text: "real minutes", visibility: isRealTimeVisible })
+                            label({ text: t("real minutes"), visibility: isRealTimeVisible })
                         ]
                     })
                 ]
@@ -649,14 +654,14 @@ function openAddTriggerWindow(): void
 
             // ---- In-game recurring ----
             groupbox({
-                text: "In-game recurring",
+                text: t("In-game recurring"),
                 visibility: isRecurringVisible,
                 height: compute(typeIndex, t => t === 1 ? 70 : 0),
                 content: [
                     flexible({
                         direction: LayoutDirection.Horizontal,
                         content: [
-                            label({ text: "Period:", width: 65, visibility: isRecurringVisible }),
+                            label({ text: t("Period:"), width: 65, visibility: isRecurringVisible }),
                             dropdown({
                                 items: PERIOD_LABELS,
                                 selectedIndex: periodIndex,
@@ -670,7 +675,7 @@ function openAddTriggerWindow(): void
                         direction: LayoutDirection.Horizontal,
                         content: [
                             numberInputSpinner({
-                                labelText: "Day of month:",
+                                labelText: t("Day of month:"),
                                 labelWidth: 85,
                                 valueStore: dayOfMonth,
                                 step: 1,
@@ -686,7 +691,7 @@ function openAddTriggerWindow(): void
                     flexible({
                         direction: LayoutDirection.Horizontal,
                         content: [
-                            label({ text: "Month:", width: 65, visibility: isRecurringVisible }),
+                            label({ text: t("Month:"), width: 65, visibility: isRecurringVisible }),
                             dropdown({
                                 items: INGAME_MONTH_NAMES,
                                 selectedIndex: monthIndex,
@@ -702,7 +707,7 @@ function openAddTriggerWindow(): void
 
             // ---- In-game annual dates ----
             groupbox({
-                text: "In-game annual dates",
+                text: t("In-game annual dates"),
                 visibility: isAnnualVisible,
                 height: compute(typeIndex, t => t === 2 ? 120 : 0),
                 content: [
@@ -726,7 +731,7 @@ function openAddTriggerWindow(): void
                                 onChange: v => pendingDateDay.set(v)
                             }),
                             colouredButton({
-                                text: "{WHITE}Add Date",
+                                text: t("{WHITE}Add Date"),
                                 width: 75,
                                 height: 20,
                                 colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
@@ -739,7 +744,7 @@ function openAddTriggerWindow(): void
                         items: compute(pendingDatesRevision, () =>
                             pendingDates.get().map(d => [INGAME_MONTH_NAMES[d.month] ?? "?", String(d.day)])
                         ),
-                        columns: [{ header: "Month", width: 90 }, { header: "Day", width: "1w" }],
+                        columns: [{ header: t("Month"), width: 90 }, { header: t("Day"), width: "1w" }],
                         width: "1w",
                         height: 50,
                         canSelect: true,
@@ -748,7 +753,7 @@ function openAddTriggerWindow(): void
                         onClick: row => pendingDateSel.set(row)
                     }),
                     colouredButton({
-                        text: "{WHITE}Remove Date",
+                        text: t("{WHITE}Remove Date"),
                         width: 100,
                         height: 20,
                         colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
@@ -767,7 +772,7 @@ function openAddTriggerWindow(): void
                 content: [
                     label({ text: "", width: "1w" }),
                     colouredButton({
-                        text: "Cancel",
+                        text: t("Cancel"),
                         width: 70,
                         height: 22,
                         colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
@@ -775,7 +780,7 @@ function openAddTriggerWindow(): void
                     }),
                     label({ text: "", width: "1w" }),
                     colouredButton({
-                        text: "{WHITE}Set Trigger",
+                        text: t("{WHITE}Set Trigger"),
                         width: 100,
                         height: 22,
                         colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
@@ -787,7 +792,7 @@ function openAddTriggerWindow(): void
                             if (warning)
                             {
                                 if (typeof ui !== "undefined" && typeof ui.showError === "function")
-                                    ui.showError("Invalid trigger", warning);
+                                    ui.showError(t("Invalid trigger"), warning);
                                 return;
                             }
                             currentTrigger.set(trigger);
@@ -809,7 +814,7 @@ export function createShowTab()
 {
     return [
         groupbox({
-            text: "Show Editor",
+            text: t("Show Editor"),
             content: [
                 flexible({
                     direction: LayoutDirection.Horizontal,
@@ -818,12 +823,12 @@ export function createShowTab()
                             width: 390,
                             height: "1w",
                             padding: 6,
-                            text: "Current Show",
+                            text: t("Current Show"),
                             content: flexible({
                                 direction: LayoutDirection.Vertical,
                                 height: "1w",
                                 content: [
-                                    label({ text: "Name" }),
+                                    label({ text: t("Name") }),
                                     textbox({
                                         text: editedShowName,
                                         onChange: value => editedShowName.set(value),
@@ -833,9 +838,9 @@ export function createShowTab()
                                     flexible({
                                         direction: LayoutDirection.Horizontal,
                                         content: [
-                                            label({ text: compute(selectedSequenceName, name => `Sequence: ${name.trim() || "[None]"}`), width: "1w" }),
+                                            label({ text: compute(selectedSequenceName, name => `Sequence: ${name.trim() || t("[None]")}`), width: "1w" }),
                                             colouredButton({
-                                                text: "Select Sequence",
+                                                text: t("Select Sequence"),
                                                 width: 120,
                                                 height: 20,
                                                 colour: Colour.Black, colourDark: Colour.Black, colourLight: Colour.Grey,
@@ -847,7 +852,7 @@ export function createShowTab()
                                         direction: LayoutDirection.Horizontal,
                                         content: [
                                             checkbox({
-                                                text: "Sync with ride music:",
+                                                text: t("Sync with ride music:"),
                                                 isChecked: musicEnabled,
                                                 width: 150,
                                                 onChange: value => musicEnabled.set(value)
@@ -855,7 +860,7 @@ export function createShowTab()
                                             dropdown({
                                                 items: compute(ridesRevision, () => {
                                                     const rides = getSortedRides();
-                                                    return rides.length > 0 ? rides.map(r => r.name) : ["[No rides]"];
+                                                    return rides.length > 0 ? rides.map(r => r.name) : [t("[No rides]")];
                                                 }),
                                                 selectedIndex: compute(ridesRevision, musicRideId, () => {
                                                     const rides = getSortedRides();
@@ -874,25 +879,25 @@ export function createShowTab()
                                         ]
                                     }),
                                     checkbox({
-                                        text: "Retry misfires due to particle limits and delay sequence",
+                                        text: t("Retry misfires due to particle limits and delay sequence"),
                                         isChecked: interruptStore,
                                         onChange: value => interruptStore.set(value)
                                     }),
                                     checkbox({
-                                        text: "Skip misfires due to particle limits and keep sync",
+                                        text: t("Skip misfires due to particle limits and keep sync"),
                                         isChecked: compute(interruptStore, v => !v),
                                         onChange: value => interruptStore.set(!value)
                                     }),
                                     // ---- Schedule / triggers ----
                                     groupbox({
-                                        text: "Schedule",
+                                        text: t("Schedule"),
                                         content: [
                                             listview({
                                                 items: compute(triggersRevision, () => {
                                                     const t = currentTrigger.get();
                                                     return t ? [["{WHITE}" + triggerTypeLabel(t), "{WHITE}" + triggerDetailsLabel(t)]] : [];
                                                 }),
-                                                columns: [{ header: "{WHITE}Type", width: 90 }, { header: "{WHITE}Details", width: "1w" }],
+                                                columns: [{ header: t("{WHITE}Type"), width: 90 }, { header: t("{WHITE}Details"), width: "1w" }],
                                                 width: "1w",
                                                 height: 35,
                                             }),
@@ -900,14 +905,14 @@ export function createShowTab()
                                                 direction: LayoutDirection.Horizontal,
                                                 content: [
                                                     colouredButton({
-                                                        text: "Set Trigger",
+                                                        text: t("Set Trigger"),
                                                         width: 90,
                                                         height: 20,
                                                         colour: Colour.Black, colourDark: Colour.Black, colourLight: Colour.Grey,
                                                         onClick: openAddTriggerWindow
                                                     }),
                                                     colouredButton({
-                                                        text: "Clear",
+                                                        text: t("Clear"),
                                                         width: 55,
                                                         height: 20,
                                                         colour: Colour.Black, colourDark: Colour.Black, colourLight: Colour.Grey,
@@ -927,14 +932,14 @@ export function createShowTab()
                                         ]
                                     }),
                                     // ---- Announcements ----
-                                    label({ text: "News announcement ~1 min before show (disabled if empty):" }),
+                                    label({ text: t("News announcement ~1 min before show (disabled if empty):") }),
                                     textbox({
                                         text: anouncement1Store,
                                         width: "1w",
                                         maxLength: 255,
                                         onChange: v => anouncement1Store.set(v)
                                     }),
-                                    label({ text: "News announcement at start of show (disabled if empty):" }),
+                                    label({ text: t("News announcement at start of show (disabled if empty):") }),
                                     textbox({
                                         text: anouncement2Store,
                                         width: "1w",
@@ -944,7 +949,7 @@ export function createShowTab()
                                     flexible({
                                         direction: LayoutDirection.Horizontal,
                                         content: [
-                                            label({ text: compute(selectedLaunchSiteName, name => `Location for news message locator: ${name.trim() || "[None]"}`), width: "1w" })
+                                            label({ text: compute(selectedLaunchSiteName, name => `Location for news message locator: ${name.trim() || t("[None]")}`), width: "1w" })
                                         ]
                                     }),
                                     // ---- Test / Stop controls ----
@@ -952,7 +957,7 @@ export function createShowTab()
                                         direction: LayoutDirection.Horizontal,
                                         content: [
                                             colouredButton({
-                                                text: "Select Location",
+                                                text: t("Select Location"),
                                                 width: 120,
                                                 height: 22,
                                                 colour: Colour.Black, colourDark: Colour.Black, colourLight: Colour.Grey,
@@ -960,14 +965,14 @@ export function createShowTab()
                                             }),
                                             label({ text: "", width: "1w" }),
                                             colouredButton({
-                                                text: "{WHITE}Test Show",
+                                                text: t("{WHITE}Test Show"),
                                                 width: 80,
                                                 height: 22,
                                                 colour: Colour.LightOrange, colourDark: Colour.DarkOrange, colourLight: Colour.OrangeLight,
                                                 onClick: onTestShowClick
                                             }),
                                             colouredButton({
-                                                text: "{RED}Stop",
+                                                text: t("{RED}Stop"),
                                                 width: 40,
                                                 height: 22,
                                                 colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
@@ -980,28 +985,28 @@ export function createShowTab()
                                         direction: LayoutDirection.Horizontal,
                                         content: [
                                             colouredButton({
-                                                text: compute(selectedShowIndex, idx => idx !== undefined ? "{WHITE}Update Show" : "{WHITE}Add Show"),
+                                                text: compute(selectedShowIndex, idx => idx !== undefined ? t("{WHITE}Update Show") : t("{WHITE}Add Show")),
                                                 width: 100,
                                                 height: 22,
                                                 colour: Colour.SaturatedGreen, colourDark: Colour.GrassGreenDark, colourLight: Colour.BrightGreen,
                                                 onClick: addOrUpdateShow
                                             }),
                                             colouredButton({
-                                                text: "{WHITE}New",
+                                                text: t("{WHITE}New"),
                                                 width: 50,
                                                 height: 22,
                                                 colour: Colour.LightBlue, colourDark: Colour.DarkBlue, colourLight: Colour.IcyBlue,
                                                 onClick: () => confirmDiscardChanges(isShowEditorDirty, resetShowEditor)
                                             }),
                                             colouredButton({
-                                                text: "{WHITE}Delete Show",
+                                                text: t("{WHITE}Delete Show"),
                                                 width: 90,
                                                 height: 22,
                                                 colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
                                                 onClick: deleteSelectedShow
                                             }),
                                             label({ text: "", width: "1w" }),
-                                            colouredButton({ text: "{BLACK}Debugger", width: 70, height: 22,
+                                            colouredButton({ text: t("{BLACK}Debugger"), width: 70, height: 22,
                                                 colour: Colour.Yellow, colourDark: Colour.DarkYellow, colourLight: Colour.BrightYellow,
                                                 onClick: openDebuggerWindow })
                                         ]
@@ -1016,10 +1021,10 @@ export function createShowTab()
                                 width: 190,
                                 height: 200,
                                 padding: 6,
-                                text: "Defined Shows",
+                                text: t("Defined Shows"),
                                 content: listview({
                                     items: compute(definedShows, shows => shows.map(s => ["{WHITE}" + s.name, s.enabled ? "{GREEN}Y" : ""])),
-                                    columns: [{ header: "{WHITE}Name", width: "1w" }, { header: "{WHITE}On", width: 32 }],
+                                    columns: [{ header: t("{WHITE}Name"), width: "1w" }, { header: t("{WHITE}On"), width: 32 }],
                                     width: 170,
                                     height: "1w",
                                     canSelect: true,
@@ -1029,10 +1034,10 @@ export function createShowTab()
                             }),
                             colouredButton({
                                 text: compute(selectedShowIndex, definedShows, (idx, shows) => {
-                                    if (idx === undefined) return "Selected show {GREY}N/A";
+                                    if (idx === undefined) return t("Selected show {GREY}N/A");
                                     const show = shows[idx];
-                                    if (!show) return "Selected show {GREY}N/A";
-                                    return show.enabled ? "Selected show {GREEN}ENABLED" : "Selected show {RED}DISABLED";
+                                    if (!show) return t("Selected show {GREY}N/A");
+                                    return show.enabled ? t("Selected show {GREEN}ENABLED") : t("Selected show {RED}DISABLED");
                                 }),
                                 width: 206,
                                 height: 22,
@@ -1062,7 +1067,7 @@ export function createShowTab()
                                 }
                             }),
                             colouredButton({
-                                text: "{BLACK}Start Show Programme",
+                                text: t("{BLACK}Start Show Programme"),
                                 width: 206,
                                 height: 44,
                                 colour: Colour.SaturatedGreenLight, colourDark: Colour.SaturatedGreen, colourLight: Colour.BrightGreen,
@@ -1072,7 +1077,7 @@ export function createShowTab()
                                     if (enabledShows.length === 0)
                                     {
                                         if (typeof ui !== "undefined" && typeof ui.showError === "function")
-                                            ui.showError("No enabled shows", "Enable at least one show with a trigger to start the programme.");
+                                            ui.showError(t("No enabled shows"), t("Enable at least one show with a trigger to start the programme."));
                                         return;
                                     }
                                     const ctx = buildValidationContext();
@@ -1082,7 +1087,7 @@ export function createShowTab()
                                     if (issues.length > 0)
                                     {
                                         if (typeof ui !== "undefined" && typeof ui.showError === "function")
-                                            ui.showError("Invalid show configuration", formatValidationIssues(issues));
+                                            ui.showError(t("Invalid show configuration"), formatValidationIssues(issues));
                                         return;
                                     }
                                     StartAllEnabledShowProgrammes();

@@ -1,28 +1,29 @@
+import { t } from "../../localization";
 import { checkbox, store } from "openrct2-flexui";
 import { RingEffect } from "../../fireworks/structures/effects/burstEffects/ringEffect";
 import { applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNamedColourPickerRows, createNumberRow, createPatternDropdownRow, createSequenceDropdownRowWithReverse, ExplanationParagraph, normalizePatternSelection , openEffectWindow } from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
 
 const explanation: ExplanationParagraph[] = [
-	{ text: "A ring of clumps of particles, possibly with a trail, and possibly bursting at the end.\n", height: 40 },
-	{ term: "Density", description: "Affects number of particles", height: 14 },
-	{ term: "Size", description: "Physical size of effect, affects duration\nof the effect", height: 28 },
-	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
-	{ term: "Azimuth", description: "Orientation of the ring in the horizontal plane", height: 14 },
-	{ term: "Tilt", description: "Orientation of the ring in the vertical plane", height: 14 },
-	{ term: "Random Angle", description: "Ignores azimuth and tilt, using a random\norientation each time the ring fires", height: 28 },
-	{ term: "Comet Trail", description: "Gives each particle in the ring a trailing streak", height: 14 },
-	{ term: "Comet Trail Density", description: "Controls the density of the comet trails", height: 14 },
-	{ term: "Comet Trail Width", description: "Controls the width of the comet trails", height: 14 },
-	{ term: "Comets Burst At End", description: "Lets the comets pop into a small burst\nat the end", height: 28 },
-	{ term: "Colour pattern", description: "Determines the sequence and arrangement\nof colours", height: 28 },
-	{ term: "   solid", description: "A ring of one colour", height: 14 },
-	{ term: "   solid-transition", description: "A ring of one colour that changes colour\nhalfway through", height: 28 },
-	{ term: "   2-col", description: "A ring of alternating two colours", height: 14 },
-	{ term: "   2-col-transition", description: "A ring of alternating two colours that\nchange halfway through", height: 28 },
-	{ term: "   colour-sequence", description: "A ring of colours arranged according to a\nsequence", height: 28 },
-	{ term: "Trail 1", description: "Colour one of the trail", height: 14 },
-	{ term: "Trail 2", description: "Colour two of the trail", height: 14 },
+	{ text: t("A ring of clumps of particles, possibly with a trail, and possibly bursting at the end.\n"), height: 40 },
+	{ term: t("Density"), description: t("Affects number of particles"), height: 14 },
+	{ term: t("Size"), description: t("Physical size of effect, affects duration\nof the effect"), height: 28 },
+	{ term: t("Extra Longevity"), description: t("Additional persistence in ticks"), height: 14 },
+	{ term: t("Azimuth"), description: t("Orientation of the ring in the horizontal plane"), height: 14 },
+	{ term: t("Tilt"), description: t("Orientation of the ring in the vertical plane"), height: 14 },
+	{ term: t("Random Angle"), description: t("Ignores azimuth and tilt, using a random\norientation each time the ring fires"), height: 28 },
+	{ term: t("Comet Trail"), description: t("Gives each particle in the ring a trailing streak"), height: 14 },
+	{ term: t("Comet Trail Density"), description: t("Controls the density of the comet trails"), height: 14 },
+	{ term: t("Comet Trail Width"), description: t("Controls the width of the comet trails"), height: 14 },
+	{ term: t("Comets Burst At End"), description: t("Lets the comets pop into a small burst\nat the end"), height: 28 },
+	{ term: t("Colour pattern"), description: t("Determines the sequence and arrangement\nof colours"), height: 28 },
+	{ term: "   solid", description: t("A ring of one colour"), height: 14 },
+	{ term: "   solid-transition", description: t("A ring of one colour that changes colour\nhalfway through"), height: 28 },
+	{ term: "   2-col", description: t("A ring of alternating two colours"), height: 14 },
+	{ term: "   2-col-transition", description: t("A ring of alternating two colours that\nchange halfway through"), height: 28 },
+	{ term: "   colour-sequence", description: t("A ring of colours arranged according to a\nsequence"), height: 28 },
+	{ term: t("Trail 1"), description: t("Colour one of the trail"), height: 14 },
+	{ term: t("Trail 2"), description: t("Colour two of the trail"), height: 14 },
 ];
 
 export function openRingEffectWindow(effect: RingEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
@@ -49,15 +50,15 @@ export function openRingEffectWindow(effect: RingEffect | undefined, onSave: (ef
 	const usesSequence = pattern === "colour-sequence";
 	const allPatterns = [...patternOptions];
 	const colourRows = createNamedColourPickerRows(pattern, colours, [
-		{ key: "head", label: "Colour", visibleOn: ["solid"] },
-		{ key: "trail1", label: "Trail 1", visibleOn: allPatterns },
-		{ key: "trail2", label: "Trail 2", visibleOn: allPatterns },
-		{ key: "head1", label: "Colour 1", visibleOn: ["solid-transition", "2-col"] },
-		{ key: "head2", label: "Colour 2", visibleOn: ["solid-transition", "2-col"] },
-		{ key: "head1A", label: "Colour 1A", visibleOn: ["2-col-transition"] },
-		{ key: "head2A", label: "Colour 2A", visibleOn: ["2-col-transition"] },
-		{ key: "head1B", label: "Colour 1B", visibleOn: ["2-col-transition"] },
-		{ key: "head2B", label: "Colour 2B", visibleOn: ["2-col-transition"] }
+		{ key: "head", label: t("Colour"), visibleOn: ["solid"] },
+		{ key: "trail1", label: t("Trail 1"), visibleOn: allPatterns },
+		{ key: "trail2", label: t("Trail 2"), visibleOn: allPatterns },
+		{ key: "head1", label: t("Colour 1"), visibleOn: ["solid-transition", "2-col"] },
+		{ key: "head2", label: t("Colour 2"), visibleOn: ["solid-transition", "2-col"] },
+		{ key: "head1A", label: t("Colour 1A"), visibleOn: ["2-col-transition"] },
+		{ key: "head2A", label: t("Colour 2A"), visibleOn: ["2-col-transition"] },
+		{ key: "head1B", label: t("Colour 1B"), visibleOn: ["2-col-transition"] },
+		{ key: "head2B", label: t("Colour 2B"), visibleOn: ["2-col-transition"] }
 	]);
 	let handle: { close: () => void } | undefined;
 	let isReopening = false;
@@ -70,10 +71,10 @@ export function openRingEffectWindow(effect: RingEffect | undefined, onSave: (ef
 	};
 
 	handle = openEffectWindow({
-		title: "Ring Effect",
+		title: t("Ring Effect"),
 		width: 340,
 		height: 440,
-		saveText: isEditing ? "Update Effect" : "Add Effect",
+		saveText: isEditing ? t("Update Effect") : t("Add Effect"),
 		explanation,
 		onClose: () => {
 			if (isReopening) {
@@ -84,21 +85,21 @@ export function openRingEffectWindow(effect: RingEffect | undefined, onSave: (ef
 			onClose?.();
 		},
 		content: [
-			createNumberRow("Density", size, 1, 100),
-			createNumberRow("Size", physicalSize, 1, 6, 0.1),
-			createNumberRow("Extra Longevity", extraLongevity, 0, 100),
+			createNumberRow(t("Density"), size, 1, 100),
+			createNumberRow(t("Size"), physicalSize, 1, 6, 0.1),
+			createNumberRow(t("Extra Longevity"), extraLongevity, 0, 100),
 			createEffectSizePresetRow(sizePresets, preset => {
 				size.set(preset.size);
 				physicalSize.set(preset.physicalSize);
 				extraLongevity.set(preset.extraLongevity);
 			}),
-			createNumberRow("Azimuth", azimuth, 0, 360),
-			createNumberRow("Tilt", tilt, 0, 360),
-			checkbox({ text: "Random Angle", isChecked: randomAngle, onChange: value => randomAngle.set(value) }),
-			checkbox({ text: "Comet Trail", isChecked: trail, onChange: value => trail.set(value) }),
-			createNumberRow("Comet Trail Density", trailDensity, 0, 1, 0.1),
-			createNumberRow("Comet Trail Width", trailWidth, 0, 5, 0.5),
-			checkbox({ text: "Comets Burst At End", isChecked: microburst, onChange: value => microburst.set(value) }),
+			createNumberRow(t("Azimuth"), azimuth, 0, 360),
+			createNumberRow(t("Tilt"), tilt, 0, 360),
+			checkbox({ text: t("Random Angle"), isChecked: randomAngle, onChange: value => randomAngle.set(value) }),
+			checkbox({ text: t("Comet Trail"), isChecked: trail, onChange: value => trail.set(value) }),
+			createNumberRow(t("Comet Trail Density"), trailDensity, 0, 1, 0.1),
+			createNumberRow(t("Comet Trail Width"), trailWidth, 0, 5, 0.5),
+			checkbox({ text: t("Comets Burst At End"), isChecked: microburst, onChange: value => microburst.set(value) }),
 			
 			createPatternDropdownRow(colours.pattern, patternOptions, reopenForPatternChange),
 			...(usesSequence ? [createSequenceDropdownRowWithReverse(colours.sequenceName, colours.reverseSequence)] : []),

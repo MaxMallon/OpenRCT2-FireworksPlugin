@@ -1,14 +1,15 @@
+import { t } from "../../localization";
 import { store } from "openrct2-flexui";
 import { SprayBurstEffect } from "../../fireworks/structures/effects/burstEffects/palmEffect";
 import { openEffectWindow , applyLoadColoursEditor, createEffectSizePresetRow, createLoadColoursEditor, createNumberRow, createSequenceDropdownRowWithReverse, ExplanationParagraph, normalizePatternSelection} from "./effectWindowTemplate";
 import { Effect } from "../../fireworks/structures/Effect";
 
 const explanation: ExplanationParagraph[] = [
-	{ text: "Sprays of various colours are launced outwards from a central point.\n", height: 20 },
-	{ term: "Density", description: "Affects number of comets", height: 14 },
-	{ term: "Size", description: "Physical size of effect, affects duration\nof the effect", height: 28 },
-	{ term: "Extra Longevity", description: "Additional persistence in ticks", height: 14 },
-	{ term: "Colour Sequence", description: "The colours of sprays to use in random order", height: 14 },
+	{ text: t("Sprays of various colours are launced outwards from a central point.\n"), height: 20 },
+	{ term: t("Density"), description: t("Affects number of comets"), height: 14 },
+	{ term: t("Size"), description: t("Physical size of effect, affects duration\nof the effect"), height: 28 },
+	{ term: t("Extra Longevity"), description: t("Additional persistence in ticks"), height: 14 },
+	{ term: t("Colour Sequence"), description: t("The colours of sprays to use in random order"), height: 14 },
 ];
 
 export function openSprayBurstEffectWindow(effect: SprayBurstEffect | undefined, onSave: (effect: Effect) => void, isEditing: boolean = effect !== undefined, onClose?: () => void): void
@@ -28,10 +29,10 @@ export function openSprayBurstEffectWindow(effect: SprayBurstEffect | undefined,
 	let isReopening = false;
 
 	openEffectWindow({
-		title: "Spray Burst Effect",
+		title: t("Spray Burst Effect"),
 		width: 320,
 		height: 550,
-		saveText: isEditing ? "Update Effect" : "Add Effect",
+		saveText: isEditing ? t("Update Effect") : t("Add Effect"),
 		explanation,
 		onClose: () => {
 			if (isReopening) {
@@ -42,9 +43,9 @@ export function openSprayBurstEffectWindow(effect: SprayBurstEffect | undefined,
 			onClose?.();
 		},
 		content: [
-			createNumberRow("Density", size, 50, 150),
-			createNumberRow("Size", physicalSize, 1, 6, 0.1),
-			createNumberRow("Extra Longevity", extraLongevity, 0, 100),
+			createNumberRow(t("Density"), size, 50, 150),
+			createNumberRow(t("Size"), physicalSize, 1, 6, 0.1),
+			createNumberRow(t("Extra Longevity"), extraLongevity, 0, 100),
 			createEffectSizePresetRow(sizePresets, preset => {
 				size.set(preset.size);
 				physicalSize.set(preset.physicalSize);

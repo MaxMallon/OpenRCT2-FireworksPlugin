@@ -1,3 +1,4 @@
+import { t } from "../localization";
 import { Colour, flexible, label, LayoutDirection, listview, store } from "openrct2-flexui";
 import type { OpenWindow } from "openrct2-flexui";
 import { UsageReference } from "../fireworks/usageChecker";
@@ -6,12 +7,12 @@ import { openPopupWindow } from "./popupWindows";
 import { colouredButton } from "./ColouredButton";
 
 const KIND_LABELS: Record<string, string> = {
-	load: "Load",
-	shell: "Shell",
-	groundEffect: "Ground Effect",
-	sequence: "Sequence",
-	show: "Show",
-	unsavedEditor: "Unsaved Editor",
+	load: t("Load"),
+	shell: t("Shell"),
+	groundEffect: t("Ground Effect"),
+	sequence: t("Sequence"),
+	show: t("Show"),
+	unsavedEditor: t("Unsaved Editor"),
 };
 
 /**
@@ -55,7 +56,7 @@ export function openUsageWarningWindow(
 	const totalHeight = 120 + listHeight;
 
 	handle = openPopupWindow("usage-warning", {
-		title: "Item In Use",
+		title: t("Item In Use"),
 		width: 400,
 		height: totalHeight,
 		padding: 8,
@@ -67,27 +68,27 @@ export function openUsageWarningWindow(
 			listview({
 				items: store(usageRows),
 				columns: [
-					{ header: "Type", width: 100 },
-					{ header: "Name / Detail", width: "1w" },
+					{ header: t("Type"), width: 100 },
+					{ header: t("Name / Detail"), width: "1w" },
 				],
 				width: "1w",
 				height: listHeight,
 				canSelect: false,
 			}),
 			label({ text: "" }),
-			label({ text: "{WHITE}How would you like to proceed?" }),
+			label({ text: t("{WHITE}How would you like to proceed?") }),
 			flexible({
 				direction: LayoutDirection.Horizontal,
 				content: [
                     colouredButton({
-						text: "Cancel",
+						text: t("Cancel"),
 						width: 70,
 						height: 22,
 						colour: Colour.Grey, colourDark: Colour.Black, colourLight: Colour.White,
 						onClick: () => handle?.close(),
 					}),
 					colouredButton({
-						text: "{WHITE}Delete, leave references",
+						text: t("{WHITE}Delete, leave references"),
 						width: 180,
 						height: 22,
 						colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
@@ -97,7 +98,7 @@ export function openUsageWarningWindow(
 						},
 					}),
 					colouredButton({
-						text: "{WHITE}Delete cascading",
+						text: t("{WHITE}Delete cascading"),
 						width: 120,
 						height: 22,
 						colour: Colour.SaturatedRed, colourDark: Colour.BordeauxRedDark, colourLight: Colour.BrightRed,
