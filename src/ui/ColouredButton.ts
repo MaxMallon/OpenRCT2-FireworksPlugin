@@ -60,8 +60,8 @@ export function colouredButton(params: ColouredButtonParams): WidgetCreator<Flex
                 x: 0, y: 0,
                 width: "100%", height: "100%",
                 text: text,
-                image: 2100000000,
-                border: false,
+                border: true,
+                isPressed: pressed,
                 disabled,
                 visibility,
                 onClick
